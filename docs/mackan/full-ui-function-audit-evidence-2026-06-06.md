@@ -58,6 +58,9 @@
 | 2026-06-06T16:24:00+0300 | `swift test --package-path macosx/MACKAN --filter AppModelTests` | exit 0 | 140 passed, 0 failed; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-app-model-tests-after-repo-fix.log`. |
 | 2026-06-06T16:24:30+0300 | `/opt/homebrew/bin/dotnet test Tests/Tests.csproj --framework net10.0 --filter CoreMackanRepositoryProviderTests` | exit 0 | 5 passed, 0 failed; existing SYSLIB0050 warnings only; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-core-repository-provider-tests-net10-after-repo-fix.log`. |
 | 2026-06-06T16:25:00+0300 | `/opt/homebrew/bin/dotnet test Tests/Tests.csproj --framework net10.0 --filter ServiceDispatcherTests` | exit 0 | 86 passed, 0 failed; existing SYSLIB0050 warnings only; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-service-dispatcher-tests-net10-after-repo-fix.log`. |
+| 2026-06-06T17:57:12+0300 | `swift test --package-path macosx/MACKAN --filter 'CatalogReadinessPresentationStateTests&#124;InspectorEmptyPresentationStateTests&#124;ModuleRelationshipGraphTests&#124;ModuleActionPresentationStateTests&#124;CatalogToolbarLayoutPolicyTests&#124;CatalogGridIdentityPolicyTests'` | exit 0 | 16 passed, 0 failed; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task11-swift-catalog-inspector.log`. |
+| 2026-06-06T17:58:00+0300 | `/opt/homebrew/bin/dotnet test Tests/Tests.csproj --framework net10.0 --filter "FullyQualifiedName~CoreMackanModuleProviderTests&#124;FullyQualifiedName~ServiceDispatcherTests"` | exit 0 | 88 passed, 0 failed; existing SYSLIB0050 warnings only; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task11-dotnet-module-dispatcher.log`. |
+| 2026-06-06T18:20:21+0300 | `swift test --package-path macosx/MACKAN --filter 'testBuiltInSavedSearchAppliesCatalogFilterAndClearsAdHocSearch&#124;testSavedCatalogSearchLoadsSavesAndAppliesState&#124;testSavedCatalogSearchReplacesByNameAndDeletesPersistently'` | exit 0 | 3 passed, 0 failed; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task11-swift-saved-search.log`. |
 
 ## Baseline Git Status Verbatim
 
@@ -182,6 +185,13 @@
 | 2026-06-06T16:18:00+0300 | `SET-REPO-004` | Clicked Remove on selected `KSP-backup` | CKAN CLI returned to the single original `KSP-стандартный` repository; no leftover audit repository remained. |
 | 2026-06-06T16:20:00+0300 | `SET-REPO-003` | Clicked Refresh in the Repositories pane | UI showed `Refreshing repositories...` with busy indicator and event log, then completed as `Updated - 2,247 compatible modules`; repository list stayed clean. |
 | 2026-06-06T16:22:00+0300 | `SET-REPO-003` | Started Refresh again and used the active Cancel control | AX button count changed from 5 to 6, script clicked the inserted Cancel button, final UI returned to `Up to date - 2,247 compatible modules`; repository list still contained only `KSP-стандартный`. |
+| 2026-06-06T16:45:00+0300 | `CAT-SEARCH-001`, `CAT-SEARCH-002` | Set catalog search queries and used Search Syntax examples | Direct text-field state set `is:installed`; Search Syntax menu opened and populated `scatterer @blackrack`; filter reset to All as expected. |
+| 2026-06-06T16:50:00+0300 | `CAT-FILTER-001`, `CAT-TAG-001`, `CAT-SORT-001`, `CAT-SORT-002` | Exercised filter, tag, primary sort and secondary sort controls | Installed, Not Installed, Upgradable, Compatible, Incompatible, Cached, Uncached, New and Replaceable filters selected; `graphics` tag applied; primary sort changed to Identifier; secondary sort state captured. |
+| 2026-06-06T17:05:00+0300 | `CAT-COLUMN-001`, `CAT-LOADING-001` | Opened Columns menu, toggled visible columns, then restored defaults by deleting `mackan.visibleModuleColumns` and relaunching | Headers changed without hiding all columns; relaunch showed catalog loading overlay and then loaded catalog; only column-visibility defaults were reset. |
+| 2026-06-06T17:20:00+0300 | `CAT-ROW-001`, `WIN-TOOLBAR-002`, `CAT-ACTION-001`, `WIN-SHEET-001`, `OPS-PREVIEW-001` | Selected `4kSP_Expanded`, tried row/pending-cell staging, staged through toolbar Install, opened Preview, then cleared | Row/status/pending-cell clicks did not stage; toolbar Install produced `1 change staged`; Preview showed `Install 4kSP_Expanded 0.2.2` with reason `User requested`; Close and Clear returned to `No changes staged`. |
+| 2026-06-06T17:35:00+0300 | `CAT-LABEL-001`, `CAT-LABEL-002`, `SID-LABEL-001` | Opened Labels menu and Labels Manager, created a new-label draft and attempted Save through click, AXPress and paste paths | Built-in labels and manager UI rendered; new-label draft accepted name, scope, color and two flags, but Save did not create the label; sheet closed with no persisted audit label. |
+| 2026-06-06T17:45:00+0300 | `INS-HEADER-001`, `INS-OVERVIEW-001`, `INS-RELATIONSHIP-001`, `INS-VERSION-001`, `INS-CONTENT-001`, `INS-RESOURCE-001` | Switched inspector tabs for selected `4kSP_Expanded` | Overview, Relationships, Versions, Contents and Resources tabs all rendered populated module details; Resources listed Homepage, SpaceDock, Repository, Bug Tracker and Remote AVC links. |
+| 2026-06-06T18:18:00+0300 | `CAT-SAVEDSEARCH-001` | Saved current search, reopened Saved Searches menu, deleted the saved search through submenu, and confirmed cleanup | Save sheet opened; saved entry appeared as `identifier:Eternal`; Delete Saved Search submenu removed it and the menu returned to `No Saved Searches`. Attempted custom pasted name was not reflected in this live pass. |
 
 ## Defects
 
@@ -189,6 +199,8 @@
 | --- | --- | --- | --- | --- | --- |
 | BASELINE-DOTNET-001 | P0 | Plan baseline `dotnet test Tests/Tests.csproj --filter MACKAN` fails on macOS all-target build; scoped `--framework net10.0` MACKAN tests pass. | `Tests/Tests.csproj`; `Core/Configuration/KeychainAuthTokenConfiguration.cs`; `Cmdline/CKAN-cmdline.csproj`; local dotnet PATH selection | open | Failing logs: `dotnet-test-mackan*.log`; passing scoped log: `dotnet-test-mackan-net10.log` |
 | SET-REPO-002 | P1 | Add Repository sheet clipped its footer buttons and Known Sources row selection did not populate Name/URL fields, blocking the normal canonical-source add workflow. | `macosx/MACKAN/Sources/MACKAN/RepositoryPreferencesView.swift`; `macosx/MACKAN/Sources/MACKANKit/AddRepositorySheetPresentationPolicy.swift`; `macosx/MACKAN/Tests/MACKANKitTests/ModalSheetLayoutPolicyTests.swift` | fixed | Failing artifacts: `task10/add-repository-open-3.png`, `task10/add-repository-row-selected-fields.txt`; fixed artifacts: `task10/add-repository-after-fix-open.png`, `task10/add-repository-ksp-backup-selected-fields.txt`; tests: `task10-modal-sheet-layout-policy-tests-after-repo-fix.log` |
+| CAT-ROW-001 | P1 | Catalog row double-click and status/pending cell clicks did not stage the preferred install action, while toolbar Install staged the same selected module immediately. | `macosx/MACKAN/Sources/MACKAN/CatalogViews.swift`; `macosx/MACKAN/Sources/MACKANKit/AppModel+Catalog.swift`; `macosx/MACKAN/Sources/MACKANKit/ModuleActionPresentationState.swift` | open | Failing artifacts: `task11/row-double-click-staged-install.png`, `task11/status-cell-click-staged-install.png`, `task11/pending-cell-click-staged.png`; passing contrast: `task11/toolbar-install-staged-repeat.png` |
+| CAT-LABEL-002 | P1 | Labels Manager New Label form accepts name/scope/color/flags, but Save does not upsert or add the draft to the label list; custom label toggle/filter coverage is blocked. | `macosx/MACKAN/Sources/MACKAN/LabelsManagerSheet.swift`; `macosx/MACKAN/Sources/MACKANKit/AppModel+Labels.swift`; `MACKAN.Service` label routes | open | Failing artifacts: `task11/labels-manager-created.png`, `task11/labels-manager-saved-axpress.png`, `task11/labels-manager-saved-paste.png`, `task11/labels-manager-saved-paste-ax.txt`; dispatcher/module tests passed in `task11-dotnet-module-dispatcher.log` |
 
 ## Screenshots and Artifacts
 
@@ -258,6 +270,36 @@
 | Task 10 AppModelTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-app-model-tests-after-repo-fix.log` | `SET-REPO-*` |
 | Task 10 CoreMackanRepositoryProviderTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-core-repository-provider-tests-net10-after-repo-fix.log` | `SET-REPO-*` |
 | Task 10 ServiceDispatcherTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-service-dispatcher-tests-net10-after-repo-fix.log` | `SET-REPO-*`; sidecar dispatcher |
+| Task 11 catalog/inspector Swift test log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11-swift-catalog-inspector.log` | `CAT-*`; `INS-*`; `WIN-TOOLBAR-002` |
+| Task 11 saved-search Swift test log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11-swift-saved-search.log` | `CAT-SAVEDSEARCH-001` |
+| Task 11 module/dispatcher .NET test log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11-dotnet-module-dispatcher.log` | `CAT-*`; `INS-*`; `CAT-LABEL-*`; sidecar dispatcher |
+| Task 11 catalog loading screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/columns-defaults-restored-after-relaunch.png` | `CAT-LOADING-001`; `INS-EMPTY-001` |
+| Task 11 catalog search evidence | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/catalog-search-is-installed-setvalue.png` | `CAT-SEARCH-001` |
+| Task 11 Search Syntax evidence | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/search-syntax-menu-open-direct.png` | `CAT-SEARCH-002` |
+| Task 11 filter pass state log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/filter-pass-states.txt` | `CAT-FILTER-001` |
+| Task 11 tag filter screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/tag-graphics-applied.png` | `CAT-TAG-001` |
+| Task 11 sort state screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/catalog-compatible-identifier-sort.png` | `CAT-SORT-001` |
+| Task 11 secondary sort state | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/catalog-secondary-sort-identifier-state.txt` | `CAT-SORT-002` |
+| Task 11 columns menu screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/columns-menu-open.png` | `CAT-COLUMN-001` |
+| Task 11 columns toggled screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/columns-five-hidden-visible.png` | `CAT-COLUMN-001` |
+| Task 11 header click retest screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/header-name-sort-click.png` | `CAT-COLUMN-002` |
+| Task 11 selected module screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/first-compatible-row-selected.png` | `CAT-ROW-001`; `INS-HEADER-001` |
+| Task 11 row no-op screenshots | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/row-double-click-staged-install.png`; `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/status-cell-click-staged-install.png`; `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/pending-cell-click-staged.png` | `CAT-ROW-001`; defect |
+| Task 11 toolbar staging screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/toolbar-install-staged-repeat.png` | `WIN-TOOLBAR-002`; `CAT-ACTION-001` |
+| Task 11 change preview screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/change-preview-sheet-open.png` | `WIN-SHEET-001`; `OPS-PREVIEW-001`; `CAT-ACTION-001` |
+| Task 11 preview cleared screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/preview-closed-cleared.png` | `CAT-ACTION-001`; cleanup |
+| Task 11 Labels menu screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/labels-menu-open.png` | `CAT-LABEL-001`; `SID-LABEL-001` |
+| Task 11 Labels Manager open screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/labels-manager-open.png` | `CAT-LABEL-002`; `SID-LABEL-001` |
+| Task 11 Labels Manager failing save screenshots | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/labels-manager-created.png`; `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/labels-manager-saved-paste.png` | `CAT-LABEL-002`; defect |
+| Task 11 inspector Overview screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/inspector-overview-tab.png` | `INS-OVERVIEW-001`; `INS-HEADER-001` |
+| Task 11 inspector Relationships screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/inspector-relationships-tab.png` | `INS-RELATIONSHIP-001` |
+| Task 11 inspector Versions screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/inspector-versions-tab.png` | `INS-VERSION-001` |
+| Task 11 inspector Contents screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/inspector-contents-tab.png` | `INS-CONTENT-001` |
+| Task 11 inspector Resources screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/inspector-resources-tab.png` | `INS-RESOURCE-001` |
+| Task 11 Saved Searches menu screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/saved-searches-menu-open-actual.png` | `CAT-SAVEDSEARCH-001` |
+| Task 11 Save Search sheet screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/saved-search-save-sheet-open.png` | `CAT-SAVEDSEARCH-001` |
+| Task 11 Saved Search saved/deleted screenshots | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/saved-searches-menu-after-save.png`; `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/saved-searches-menu-after-delete.png` | `CAT-SAVEDSEARCH-001`; cleanup |
+| Task 11 final clean catalog screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task11/final-catalog-clean-state.png` | Task 11 cleanup |
 
 ## Automated Proof Mapping Summary
 

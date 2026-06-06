@@ -891,7 +891,7 @@ Expected: commit succeeds.
 - Inspect/fix if needed: `MACKAN.Service/CoreMackanModuleProvider.cs`
 - Inspect/fix if needed: `MACKAN.Service/CoreMackanLabelProvider.cs`
 
-- [ ] **Step 1: Exercise loading and empty states**
+- [x] **Step 1: Exercise loading and empty states**
 
 Use real app:
 
@@ -904,7 +904,7 @@ Select a module and verify inspector tabs populate.
 
 Expected: loading/empty states are specific and do not block table interaction after catalog load completes.
 
-- [ ] **Step 2: Exercise search/filter/tag/sort/columns**
+- [x] **Step 2: Exercise search/filter/tag/sort/columns**
 
 Use real app:
 
@@ -921,7 +921,7 @@ Resize table columns.
 
 Expected: table contents update; selected module state remains coherent; persisted state survives app relaunch.
 
-- [ ] **Step 3: Exercise row/action behavior**
+- [x] **Step 3: Exercise row/action behavior**
 
 Use deterministic selection rule:
 
@@ -939,7 +939,7 @@ Toggle auto-installed state.
 
 Expected: staged strip/action badges update and inspector follows selected row.
 
-- [ ] **Step 4: Exercise labels**
+- [x] **Step 4: Exercise labels**
 
 Use real UI:
 
@@ -956,7 +956,7 @@ Delete "MACKAN Audit Label".
 
 Expected: label appears in sidebar/search, applies to selected module, then disappears after delete.
 
-- [ ] **Step 5: Exercise inspector tabs**
+- [x] **Step 5: Exercise inspector tabs**
 
 For one selected module, verify:
 
@@ -971,7 +971,7 @@ Long description scrolling.
 
 Expected: no critical clipping, resource links are selectable/openable, relationship rows are accessible.
 
-- [ ] **Step 6: Run catalog/inspector tests**
+- [x] **Step 6: Run catalog/inspector tests**
 
 Run:
 
@@ -986,7 +986,7 @@ dotnet test Tests/Tests.csproj --filter CoreMackanModuleProviderTests
 
 Expected: all exit `0`.
 
-- [ ] **Step 7: Commit catalog/inspector evidence**
+- [x] **Step 7: Commit catalog/inspector evidence**
 
 Run:
 
