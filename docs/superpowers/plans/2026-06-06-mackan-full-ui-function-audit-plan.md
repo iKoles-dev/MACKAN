@@ -1679,6 +1679,8 @@ Task 17 progress notes:
 - `MAINT-REPAIR-001` was fixed at the CKAN core registry layer: `Registry.ReindexInstalled()` now tolerates duplicate installed-file/directory owners and keeps a deterministic owner.
 - Regression test: `RegistryTests.Repair_WithDuplicateInstalledDirectoryOwners_ReindexesSingleOwner`.
 - Verification: targeted registry test passed 1/1, `CoreMackanMaintenanceProviderTests` passed 9/9, `Tests.Core.Registry` passed 40/40, scoped MACKAN net10 passed 1451/1451, and a rebuilt-service real repair retest on `Авто KSP` completed with `error=null`; logs are under `/tmp/mackan-full-ui-function-audit-2026-06-06/task17-repair/`.
+- `BASELINE-DOTNET-001` was fixed in `Tests.csproj`: Windows keeps all original test target frameworks, while non-Windows now uses `net10.0` so the baseline MACKAN command does not try to build `net481` or WindowsDesktop targets on macOS.
+- Verification: `dotnet test Tests/Tests.csproj --filter MACKAN` passed 1451/1451; log is `/tmp/mackan-full-ui-function-audit-2026-06-06/task17-repair/dotnet-test-mackan-alltarget-after-baseline-fix.log`.
 
 ## Task 18: P2/P3 Triage
 

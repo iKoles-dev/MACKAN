@@ -22,7 +22,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsNotAsErrors>CS0436,NU1901,NU1902,NU1903,NU1904</WarningsNotAsErrors>
     <NoWarn>IDE1006,NU1701</NoWarn>
-    <TargetFrameworks>net481;net10.0;net10.0-windows</TargetFrameworks>
+    <TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">net481;net10.0;net10.0-windows</TargetFrameworks>
+    <TargetFrameworks Condition=" '$(OS)' != 'Windows_NT' ">net10.0</TargetFrameworks>
     <BaseTargetFramework>$(TargetFramework.Replace("-windows", ""))</BaseTargetFramework>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
