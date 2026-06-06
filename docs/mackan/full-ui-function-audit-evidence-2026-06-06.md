@@ -44,6 +44,102 @@
 | 2026-06-06T14:33:30+0300 | `macosx/MACKAN/scripts/verify-app-bundle.sh --mode auto --require-icon --require-version 0.1.0 /Users/elijahn/Library/Caches/MACKAN/build/MACKAN.app` | exit 0 | Verified single-arch app bundle; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/baseline/verify-app-bundle.log`. |
 | 2026-06-06T14:33:30+0300 | `macosx/MACKAN/scripts/verify-app-launch.sh --timeout 25 /Users/elijahn/Library/Caches/MACKAN/build/MACKAN.app` | exit 0 | Verified GUI launch without Terminal and with 1 visible window; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/baseline/verify-app-launch.log`. |
 
+## Baseline Git Status Verbatim
+
+```text
+ M .github/workflows/build.yml
+ M .gitignore
+ M ConsoleUI/CKAN-ConsoleUI.csproj
+ M Core/CKAN-core.csproj
+ M Core/GameInstance.cs
+ M Core/IO/HardLink.cs
+ M Core/IO/InstalledFilesDeduplicator.cs
+ M Core/IO/ModuleImporter.cs
+ M Core/Net/NetModuleCache.cs
+ M Core/ServiceLocator.cs
+ M README.md
+ M Tests/Core/Configuration/FakeConfiguration.cs
+ M Tests/Tests.csproj
+?? .github/workflows/mackan-release.yml
+?? Core/Configuration/KeychainAuthTokenConfiguration.cs
+?? MACKAN.Service/
+?? Tests/Core/Configuration/KeychainAuthTokenConfigurationTests.cs
+?? Tests/MACKAN/
+?? docs/mackan/README.md
+?? docs/mackan/architecture.md
+?? docs/mackan/brainstorming-release-plan-v1.md
+?? docs/mackan/brainstorming-session-kit-v1.0.md
+?? docs/mackan/brainstorming-session-plan.md
+?? docs/mackan/brainstorming-workshop-v1.md
+?? docs/mackan/brainstorming.md
+?? docs/mackan/implementation-candidate-backlog.md
+?? docs/mackan/next-iteration-plan.md
+?? docs/mackan/parity-focus-initial.md
+?? docs/mackan/parity-matrix.md
+?? docs/mackan/product-spec.md
+?? docs/mackan/release-execution-checklist.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-1.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-10.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-11.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-12.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-13.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-14.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-15.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-16.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-17.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-18.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-19.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-2.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-20.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-21.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-22.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-23.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-3.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-4.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-5.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-6.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-7.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-8.md
+?? docs/mackan/release-readiness-evidence-2026-05-31-impl-pass-9.md
+?? docs/mackan/release-readiness-evidence-2026-05-31.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-canonical-repositories.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-catalog-full-list.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-catalog-labels-tags.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-catalog-search.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-catalog-smart-filters.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-changeset-apply-provider.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-changeset-replace-recommendations.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-clean-smoke.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-maintenance-file-workflows.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-operations-registry-lock.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-operations-updates-closeout.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-rc-full-smoke.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-repo-mutations.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-repo-refresh-recovery.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-signed-workflow.md
+?? docs/mackan/release-readiness-evidence-2026-06-01-ui-ux-hardening.md
+?? docs/mackan/release-readiness-evidence-2026-06-05-product-design-ui-hardening.md
+?? docs/mackan/release-roadmap.md
+?? docs/mackan/sprint-0-execution-pack.md
+?? docs/mackan/sprint-1-execution-log.md
+?? docs/mackan/sprint-1-instances-repositories-pack.md
+?? docs/mackan/sprint-1-runbook.md
+?? docs/mackan/sprint-1-static-proof-matrix.txt
+?? docs/mackan/sprint-2-catalog-changeset-pack.md
+?? docs/mackan/v1-release-execution-runbook.md
+?? docs/superpowers/plans/2026-05-31-mackan-native-macos-release-plan.md
+?? docs/superpowers/plans/2026-05-31-mackan-v1-required-only-execution-plan.md
+?? docs/superpowers/specs/2026-05-30-mackan-native-macos-design.md
+?? docs/superpowers/specs/2026-05-31-mackan-implementation-plan.md
+?? docs/superpowers/specs/2026-05-31-mackan-release-blueprint-approved-design.md
+?? docs/superpowers/specs/2026-05-31-mackan-release-blueprint.md
+?? docs/superpowers/specs/2026-05-31-mackan-release-execution-plan.md
+?? docs/superpowers/specs/2026-05-31-mackan-release-implementation-plan.md
+?? docs/superpowers/specs/2026-05-31-mackan-v1-design.md
+?? docs/superpowers/specs/2026-05-31-mackan-v1-ultimate-release-design.md
+?? macosx/MACKAN/
+```
+
 ## Live Mutations
 
 | Time | Matrix Row | Action | Observed State Change |
