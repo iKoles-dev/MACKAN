@@ -1681,6 +1681,10 @@ Task 17 progress notes:
 - Verification: targeted registry test passed 1/1, `CoreMackanMaintenanceProviderTests` passed 9/9, `Tests.Core.Registry` passed 40/40, scoped MACKAN net10 passed 1451/1451, and a rebuilt-service real repair retest on `Авто KSP` completed with `error=null`; logs are under `/tmp/mackan-full-ui-function-audit-2026-06-06/task17-repair/`.
 - `BASELINE-DOTNET-001` was fixed in `Tests.csproj`: Windows keeps all original test target frameworks, while non-Windows now uses `net10.0` so the baseline MACKAN command does not try to build `net481` or WindowsDesktop targets on macOS.
 - Verification: `dotnet test Tests/Tests.csproj --filter MACKAN` passed 1451/1451; log is `/tmp/mackan-full-ui-function-audit-2026-06-06/task17-repair/dotnet-test-mackan-alltarget-after-baseline-fix.log`.
+- `CAT-LABEL-002` was fixed in `LabelsManagerSheet`: live AX/paste repro showed visible name text could sit in the focused TextField editor without committing into `draft.name`, leaving Save disabled/no-op. The sheet now focuses the name field on New, enables Save while editing, resigns first responder before save, yields once, then reads the committed draft.
+- Verification: `swift build`, targeted `AppModelTests`, full Swift package, direct sidecar `labels.upsert`/`labels.delete`, and rebuilt-app live create/save/delete all passed; evidence is under `/tmp/mackan-full-ui-function-audit-2026-06-06/task17-label-live/` and `/tmp/mackan-full-ui-function-audit-2026-06-06/task17-label-fixed/`.
+- `CAT-ROW-001` was fixed in `CatalogViews`: pending cells now toggle the preferred staged action like status cells, and row double-click survives the SwiftUI selection re-render by tracking recent row clicks in `CatalogView` state in addition to the AppKit overlay.
+- Verification: `swift build`, `ModuleActionPresentationStateTests`, full Swift package, rebuilt-app CGEvent row double-click, rebuilt-app status-cell click, rebuilt-app pending-cell click and final Clear all passed; evidence is under `/tmp/mackan-full-ui-function-audit-2026-06-06/task17-row/` and `/tmp/mackan-full-ui-function-audit-2026-06-06/task17-row-live/`.
 
 ## Task 18: P2/P3 Triage
 
