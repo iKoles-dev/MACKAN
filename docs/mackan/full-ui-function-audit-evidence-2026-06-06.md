@@ -53,6 +53,11 @@
 | 2026-06-06T14:47:30+0300 | `open /Users/elijahn/Library/Caches/MACKAN/build/MACKAN.app; osascript ... menu enablement snapshot` | exit 0 | MACKAN frontmost with 1 window; menu enablement saved to `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-menu-enablements.txt`. |
 | 2026-06-06T14:48:00+0300 | `Help/About/Update/Diagnostics menu automation plus screenshots` | exit 0 | Captured About, stable update error sheet, diagnostics alert, clipboard head and diagnostics bundle path. |
 | 2026-06-06T14:50:00+0300 | `Help > User Guide` | exit 0 | External link opened in Arc to GitHub `KSP-CKAN/CKAN` wiki `User guide`; screenshot `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-user-guide-external.png`. |
+| 2026-06-06T16:03:00+0300 | `macosx/MACKAN/scripts/build-dev-app.sh` | exit 0 | Rebuilt patched app after Add Repository sheet fix; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-build-dev-app-after-repo-fix.log`. |
+| 2026-06-06T16:23:41+0300 | `swift test --package-path macosx/MACKAN --filter ModalSheetLayoutPolicyTests` | exit 0 | 5 passed, 0 failed; includes Add Repository sheet height and known-source field regression tests; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-modal-sheet-layout-policy-tests-after-repo-fix.log`. |
+| 2026-06-06T16:24:00+0300 | `swift test --package-path macosx/MACKAN --filter AppModelTests` | exit 0 | 140 passed, 0 failed; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-app-model-tests-after-repo-fix.log`. |
+| 2026-06-06T16:24:30+0300 | `/opt/homebrew/bin/dotnet test Tests/Tests.csproj --framework net10.0 --filter CoreMackanRepositoryProviderTests` | exit 0 | 5 passed, 0 failed; existing SYSLIB0050 warnings only; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-core-repository-provider-tests-net10-after-repo-fix.log`. |
+| 2026-06-06T16:25:00+0300 | `/opt/homebrew/bin/dotnet test Tests/Tests.csproj --framework net10.0 --filter ServiceDispatcherTests` | exit 0 | 86 passed, 0 failed; existing SYSLIB0050 warnings only; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-service-dispatcher-tests-net10-after-repo-fix.log`. |
 
 ## Baseline Git Status Verbatim
 
@@ -168,12 +173,22 @@
 | 2026-06-06T15:27:00+0300 | `WIN-ALERT-004`, `APP-MENU-002` | Launched missing command from submenu and via Launch Game | Both launch attempts showed `Failed to launch game` with command details and `Retry Launch`; no real KSP process was started. |
 | 2026-06-06T15:30:00+0300 | `INST-LAUNCHCMD-001` | Reset launch command lines to defaults | Reset to Defaults then Save restored the launch submenu to `./KSP.app/Contents/MacOS/KSP`. |
 | 2026-06-06T15:36:00+0300 | `APP-MENU-001`, `INST-MANAGE-002` | Cleaned audit registry state and smoke-opened direct Add/Clone menu sheets | Final CKAN CLI registry contained only `Авто KSP` as default; audit folders `KSP Fake` and `KSP Fake Clone` remained on disk, matching the Forget contract. Direct menu Add/Clone sheets opened and were cancelled without mutation. |
+| 2026-06-06T15:46:00+0300 | `SET-REPO-001` | Opened Settings then Repositories | Repository table rendered real `KSP-стандартный` source; CKAN CLI snapshot saved at `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/ckan-repositories-before.txt`. |
+| 2026-06-06T15:52:00+0300 | `SET-REPO-002` | Opened Add Repository on the pre-fix build | Add Repository sheet was `470x260`, footer buttons were below the sheet bottom, and clicking Known Sources rows left Name/URL blank; screenshots and field dumps captured. |
+| 2026-06-06T16:08:00+0300 | `SET-REPO-002` | Rebuilt patched app and reopened Add Repository | Sheet expanded to `620x520`; `Cancel`/`Add` were fully visible and inside the sheet; known source row click populated Name/URL. |
+| 2026-06-06T16:14:00+0300 | `SET-REPO-002` | Selected `KSP-backup` known source and clicked Add | CKAN CLI listed `KSP-backup` at priority `1`; Add sheet closed and Repositories table selected the new row. |
+| 2026-06-06T16:16:00+0300 | `SET-REPO-004` | Clicked Move Up on `KSP-backup` | CKAN CLI listed `KSP-backup` at priority `0` and `KSP-стандартный` at priority `1`. |
+| 2026-06-06T16:17:00+0300 | `SET-REPO-004` | Clicked Move Down on `KSP-backup` | CKAN CLI restored `KSP-стандартный` priority `0` and `KSP-backup` priority `1`. |
+| 2026-06-06T16:18:00+0300 | `SET-REPO-004` | Clicked Remove on selected `KSP-backup` | CKAN CLI returned to the single original `KSP-стандартный` repository; no leftover audit repository remained. |
+| 2026-06-06T16:20:00+0300 | `SET-REPO-003` | Clicked Refresh in the Repositories pane | UI showed `Refreshing repositories...` with busy indicator and event log, then completed as `Updated - 2,247 compatible modules`; repository list stayed clean. |
+| 2026-06-06T16:22:00+0300 | `SET-REPO-003` | Started Refresh again and used the active Cancel control | AX button count changed from 5 to 6, script clicked the inserted Cancel button, final UI returned to `Up to date - 2,247 compatible modules`; repository list still contained only `KSP-стандартный`. |
 
 ## Defects
 
 | Matrix Row | Severity | Summary | Owner Files | Fix Status | Verification |
 | --- | --- | --- | --- | --- | --- |
 | BASELINE-DOTNET-001 | P0 | Plan baseline `dotnet test Tests/Tests.csproj --filter MACKAN` fails on macOS all-target build; scoped `--framework net10.0` MACKAN tests pass. | `Tests/Tests.csproj`; `Core/Configuration/KeychainAuthTokenConfiguration.cs`; `Cmdline/CKAN-cmdline.csproj`; local dotnet PATH selection | open | Failing logs: `dotnet-test-mackan*.log`; passing scoped log: `dotnet-test-mackan-net10.log` |
+| SET-REPO-002 | P1 | Add Repository sheet clipped its footer buttons and Known Sources row selection did not populate Name/URL fields, blocking the normal canonical-source add workflow. | `macosx/MACKAN/Sources/MACKAN/RepositoryPreferencesView.swift`; `macosx/MACKAN/Sources/MACKANKit/AddRepositorySheetPresentationPolicy.swift`; `macosx/MACKAN/Tests/MACKANKitTests/ModalSheetLayoutPolicyTests.swift` | fixed | Failing artifacts: `task10/add-repository-open-3.png`, `task10/add-repository-row-selected-fields.txt`; fixed artifacts: `task10/add-repository-after-fix-open.png`, `task10/add-repository-ksp-backup-selected-fields.txt`; tests: `task10-modal-sheet-layout-policy-tests-after-repo-fix.log` |
 
 ## Screenshots and Artifacts
 
@@ -225,6 +240,24 @@
 | Task 9 default Launch Game failure alert screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/launch-default-failure-alert.png` | `WIN-ALERT-004`; `APP-MENU-002` |
 | Task 9 final cleanup registry snapshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/ckan-instances-after-final-cleanup.txt` | `INST-MANAGE-001`; `INST-MANAGE-002`; cleanup |
 | Task 9 post menu-open/cancel registry snapshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/ckan-instances-after-menu-open-cancel.txt` | `APP-MENU-001`; cleanup |
+| Task 10 build log after repository sheet fix | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-build-dev-app-after-repo-fix.log` | `SET-REPO-002` |
+| Task 10 Add Repository pre-fix clipped sheet screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/add-repository-open-3.png` | `SET-REPO-002`; defect |
+| Task 10 Add Repository pre-fix blank known-source fields | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/add-repository-row-selected-fields.txt` | `SET-REPO-002`; defect |
+| Task 10 Add Repository fixed sheet screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/add-repository-after-fix-open.png` | `SET-REPO-002` |
+| Task 10 Add Repository fixed known-source fields | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/add-repository-ksp-backup-selected-fields.txt` | `SET-REPO-002` |
+| Task 10 repository add result screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/repositories-after-add-backup.png` | `SET-REPO-002` |
+| Task 10 repository list after add | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/ckan-repositories-after-add-backup.txt` | `SET-REPO-002`; `SET-REPO-004` |
+| Task 10 repository list after Move Up | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/ckan-repositories-after-move-up.txt` | `SET-REPO-004` |
+| Task 10 repository list after Move Down | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/ckan-repositories-after-move-down.txt` | `SET-REPO-004` |
+| Task 10 repository cleanup snapshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/ckan-repositories-after-remove-backup.txt` | `SET-REPO-004`; cleanup |
+| Task 10 repository refresh running screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/repositories-refresh-running.png` | `SET-REPO-003` |
+| Task 10 repository refresh complete screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/repositories-refresh-complete.png` | `SET-REPO-003` |
+| Task 10 repository refresh cancel attempt log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/repositories-refresh-cancel-attempt.txt` | `SET-REPO-003` |
+| Task 10 repository list after refresh cancel | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10/ckan-repositories-after-refresh-cancel.txt` | `SET-REPO-003`; cleanup |
+| Task 10 ModalSheetLayoutPolicyTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-modal-sheet-layout-policy-tests-after-repo-fix.log` | `SET-REPO-002` |
+| Task 10 AppModelTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-app-model-tests-after-repo-fix.log` | `SET-REPO-*` |
+| Task 10 CoreMackanRepositoryProviderTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-core-repository-provider-tests-net10-after-repo-fix.log` | `SET-REPO-*` |
+| Task 10 ServiceDispatcherTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task10-service-dispatcher-tests-net10-after-repo-fix.log` | `SET-REPO-*`; sidecar dispatcher |
 
 ## Automated Proof Mapping Summary
 

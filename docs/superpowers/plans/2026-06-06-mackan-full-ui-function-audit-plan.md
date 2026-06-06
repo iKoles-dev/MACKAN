@@ -813,7 +813,7 @@ Expected: commit succeeds.
 - Inspect/fix if needed: `macosx/MACKAN/Sources/MACKANKit/AppModel+Repositories.swift`
 - Inspect/fix if needed: `MACKAN.Service/CoreMackanRepositoryProvider.cs`
 
-- [ ] **Step 1: Exercise repository list and canonical sources**
+- [x] **Step 1: Exercise repository list and canonical sources**
 
 Use Settings > Repositories:
 
@@ -827,7 +827,7 @@ Cancel.
 
 Expected: canonical sources are visible and selection populates fields without mutation.
 
-- [ ] **Step 2: Exercise add/remove/reorder mutation**
+- [x] **Step 2: Exercise add/remove/reorder mutation**
 
 Use real UI:
 
@@ -841,7 +841,7 @@ Remove the added repository.
 
 Expected: table order and repository list reflect each change. Disabled move buttons must match row position.
 
-- [ ] **Step 3: Exercise refresh/status/cancel**
+- [x] **Step 3: Exercise refresh/status/cancel**
 
 Use toolbar or Mods menu:
 
@@ -854,19 +854,20 @@ Start refresh again and let it complete.
 
 Expected: running/cancelling/completed state is visible and repository metadata updates or reports typed download failure.
 
-- [ ] **Step 4: Run repository tests**
+- [x] **Step 4: Run repository tests**
 
 Run:
 
 ```sh
+swift test --package-path macosx/MACKAN --filter ModalSheetLayoutPolicyTests
 swift test --package-path macosx/MACKAN --filter AppModelTests
-dotnet test Tests/Tests.csproj --filter CoreMackanRepositoryProviderTests
-dotnet test Tests/Tests.csproj --filter ServiceDispatcherTests
+/opt/homebrew/bin/dotnet test Tests/Tests.csproj --framework net10.0 --filter CoreMackanRepositoryProviderTests
+/opt/homebrew/bin/dotnet test Tests/Tests.csproj --framework net10.0 --filter ServiceDispatcherTests
 ```
 
 Expected: all exit `0`.
 
-- [ ] **Step 5: Commit repository audit evidence**
+- [x] **Step 5: Commit repository audit evidence**
 
 Run:
 
