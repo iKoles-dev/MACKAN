@@ -1477,7 +1477,7 @@ Task 15 completion notes:
 - Inspect/fix if needed: `macosx/MACKAN/Sources/MACKAN/Resources/ru.lproj/Localizable.strings`
 - Inspect/fix if needed: layout policy files in `macosx/MACKAN/Sources/MACKANKit`
 
-- [ ] **Step 1: Re-run adaptive screenshot capture**
+- [x] **Step 1: Re-run adaptive screenshot capture**
 
 Run:
 
@@ -1487,7 +1487,9 @@ macosx/MACKAN/scripts/run-ui-ux-audit.sh --wait-catalog 60 --output /tmp/mackan-
 
 Expected: command exits `0` and captures minimum, medium and wide screenshots.
 
-- [ ] **Step 2: Inspect adaptive screenshots**
+Completed: command exited 0 and wrote evidence under `/tmp/mackan-full-ui-function-audit-2026-06-06-adaptive/`. Metadata reported `catalogReadyMode: inconclusive-wait`; screenshots are full-screen captures rather than window-only.
+
+- [x] **Step 2: Inspect adaptive screenshots**
 
 Use computer-use or image inspection for:
 
@@ -1502,7 +1504,9 @@ Sheets remain scrollable.
 
 Expected: every blocking visual defect becomes P0/P1 row.
 
-- [ ] **Step 3: Run accessibility smoke**
+Completed: visually inspected main/minimum/medium/wide screenshots. Within the MACKAN window, toolbar/filter/action strip/sidebar/content fit at captured sizes and wide mode showed readable inspector cards. Evidence limitation: desktop/Dock/widgets and an iCloud notification are visible in the screenshots, and persisted search state was `is:replaceable`.
+
+- [x] **Step 3: Run accessibility smoke**
 
 Run:
 
@@ -1512,7 +1516,9 @@ macosx/MACKAN/scripts/test-accessibility-smoke.sh
 
 Expected: exit `0`.
 
-- [ ] **Step 4: Check localization resource coverage**
+Completed: `macosx/MACKAN/scripts/test-accessibility-smoke.sh` exited 0 and wrote `task16-accessibility-smoke.log`.
+
+- [x] **Step 4: Check localization resource coverage**
 
 Run:
 
@@ -1532,7 +1538,9 @@ PY
 
 Expected: exit `0`; missing Russian keys become `SET-LOCALIZATION` rows.
 
-- [ ] **Step 5: Commit adaptive/accessibility evidence**
+Completed: English/Russian localization key coverage check exited 0 and wrote an empty `task16-localization-missing-ru-keys.txt`; no `SET-LOCALIZATION` row was added.
+
+- [x] **Step 5: Commit adaptive/accessibility evidence**
 
 Run:
 
@@ -1542,6 +1550,11 @@ git commit -m "docs: audit MACKAN adaptive UI and accessibility"
 ```
 
 Expected: commit succeeds.
+
+Task 16 completion notes:
+- Adaptive screenshot evidence, accessibility log and localization check are recorded in `docs/mackan/full-ui-function-audit-evidence-2026-06-06.md`.
+- Matrix rows `WIN-TOOLBAR-006` and `WIN-SHEET-004` now reference Task 16 artifacts and remain `partial` because representative settings/modal sheet interactions were not fully re-exercised in this task.
+- No new P0/P1 app UI defect was added from this pass. The screenshot harness evidence is noisy because `screencapture` records the full desktop and can include system notifications.
 
 ## Task 17: P0/P1 Fix Loop
 
