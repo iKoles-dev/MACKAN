@@ -1008,7 +1008,7 @@ Expected: commit succeeds.
 - Inspect/fix if needed: `MACKAN.Service/CoreMackanChangeSetProvider.cs`
 - Inspect/fix if needed: `MACKAN.Service/CoreMackanOperationProvider.cs`
 
-- [ ] **Step 1: Exercise preview without apply**
+- [x] **Step 1: Exercise preview without apply**
 
 Use real app:
 
@@ -1022,7 +1022,7 @@ Clear staged changes.
 
 Expected: preview shows change rows and Clear/Close/Apply state is coherent.
 
-- [ ] **Step 2: Exercise install/apply mutation**
+- [x] **Step 2: Exercise install/apply mutation**
 
 Use real app:
 
@@ -1038,7 +1038,7 @@ Verify installed state in catalog.
 
 Expected: module installs or a typed recoverable error appears. Silent failure is `P0`.
 
-- [ ] **Step 3: Exercise remove mutation**
+- [x] **Step 3: Exercise remove mutation**
 
 Use real app:
 
@@ -1052,7 +1052,7 @@ Verify module is no longer installed.
 
 Expected: remove transaction completes or surfaces typed recoverable error.
 
-- [ ] **Step 4: Exercise upgrade/replace/provider/recommendation/conflict paths when real catalog exposes them**
+- [x] **Step 4: Exercise upgrade/replace/provider/recommendation/conflict paths when real catalog exposes them**
 
 Use real app:
 
@@ -1067,7 +1067,7 @@ Trigger conflict path if the selected module set naturally creates one.
 
 Expected: rows with unavailable real preconditions are marked `deferred` with reason `not present in current live catalog`; rows with visible preconditions must be tested.
 
-- [ ] **Step 5: Exercise cancel/retry/recovery controls**
+- [x] **Step 5: Exercise cancel/retry/recovery controls**
 
 Use operation sheet:
 
@@ -1081,7 +1081,7 @@ For registry lock notice, inspect path and do not press Remove Lock File unless 
 
 Expected: cancel/status/retry controls mutate operation state and never become enabled no-ops.
 
-- [ ] **Step 6: Run operation tests**
+- [x] **Step 6: Run operation tests**
 
 Run:
 
@@ -1096,7 +1096,7 @@ dotnet test Tests/Tests.csproj --filter CoreMackanOperationProviderTests
 
 Expected: all exit `0`.
 
-- [ ] **Step 7: Commit change-set/operation evidence**
+- [x] **Step 7: Commit change-set/operation evidence**
 
 Run:
 
@@ -1106,6 +1106,13 @@ git commit -m "docs: audit MACKAN change-set and operation workflows"
 ```
 
 Expected: commit succeeds.
+
+Task 12 completion notes:
+
+- Live preview/install/remove/upgrade-all operations were executed against the real selected instance, with CKAN state captured before and after mutations.
+- After the user asked not to interfere with the desktop, the run switched to hidden/offscreen MACKAN inspection with window-level screenshots and Accessibility actions.
+- Provider, optional recommendation, conflict, replaceable, typed download-failure and incompatible CKAN-file controls are deferred where the current live catalog/operation route did not expose those preconditions.
+- Open defects added for persisted unsupported `identifier:` search state, stale visible-row versus action selection, and partial operation-result progress presentation.
 
 ## Task 13: File Workflows Audit
 
