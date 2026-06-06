@@ -26,6 +26,9 @@
 
 | Time | Command | Result | Notes |
 | --- | --- | --- | --- |
+| 2026-06-06T14:11:15+0300 | `rg --files macosx/MACKAN/Tests/MACKANKitTests &#124; sort` | exit 0 | Listed 22 Swift XCTest files for automation proof mapping. |
+| 2026-06-06T14:11:15+0300 | `rg --files Tests/MACKAN &#124; sort` | exit 0 | Listed 9 .NET MACKAN test files for sidecar/provider/dispatcher proof mapping. |
+| 2026-06-06T14:11:15+0300 | `rg --files macosx/MACKAN/scripts &#124; sort` | exit 0 | Listed 37 script gates, including UI/UX audit, app launch, accessibility, bundle, DMG and release verifier scripts. |
 
 ## Live Mutations
 
@@ -41,3 +44,17 @@
 
 | Artifact | Path | Matrix Rows |
 | --- | --- | --- |
+
+## Automated Proof Mapping Summary
+
+| Item | Value |
+| --- | --- |
+| Matrix rows mapped | 102 |
+| Swift XCTest files found | 22 |
+| .NET MACKAN test files found | 9 |
+| Script gates found | 37 |
+| Rows with `Automation Proof` still `not mapped` | 0 |
+| `proof-missing` rows | 0 |
+| `proof-missing` row IDs | none |
+
+Notes: Task 5 maps existing automation only; mapped rows remain `not-run` until Task 6 or later execution actually runs the proof. The intentionally unsupported rows stay `intentionally-unsupported` because they document non-UI/API-only or plugin-runtime gaps while still pointing to the closest existing automation/API proof.
