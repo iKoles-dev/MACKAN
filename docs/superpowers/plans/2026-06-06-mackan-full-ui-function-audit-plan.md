@@ -1673,6 +1673,9 @@ Task 17 progress notes:
 - Regression test: `AppModelTests.testSelectedModuleIgnoresHiddenFilteredSelectionForCatalogActions`.
 - Verification: targeted test passed and full Swift package passed 294/294; logs are under `/tmp/mackan-full-ui-function-audit-2026-06-06/task17/`.
 - Matrix/evidence status is `fixed-automated; live retest pending` rather than fully closed, because no rebuilt-app visual retest was run in this pass.
+- `CAT-SEARCH-001` was fixed next at the parser/documentation layer: `identifier:` and `id:` now match module identifiers by prefix, and Search Syntax documents the token.
+- Regression tests: `AppModelTests.testCatalogAdvancedSearchMatchesIdentifierScopedTokens` and `AppModelTests.testCatalogSearchHelpDocumentsAllSupportedAdvancedTokenFamilies`.
+- Verification: targeted tests passed and full Swift package passed 295/295; logs are under `/tmp/mackan-full-ui-function-audit-2026-06-06/task17-search/`.
 
 ## Task 18: P2/P3 Triage
 
