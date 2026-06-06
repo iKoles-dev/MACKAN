@@ -158,6 +158,16 @@
 | 2026-06-06T14:48:00+0300 | `APP-UPDATE-001` | Opened Help then Check for Updates | Update sheet displayed stable-channel visible error state: current `v1.36.5.26146`, latest unavailable, manual download required, metadata unreadable; no crash/hang. |
 | 2026-06-06T14:49:00+0300 | `APP-DIAGNOSTICS-001` | Opened Help then Report Client Issue | Diagnostics report copied to clipboard, diagnostics zip written at `/var/folders/f3/71_ydpz12073fp4rj6zxd1tr0000gn/T/MACKAN-Diagnostics-20260606T114919Z.zip`, alert shown and closed. |
 | 2026-06-06T14:50:00+0300 | `APP-MENU-005` | Opened Help then User Guide | Arc opened GitHub `KSP-CKAN/CKAN` wiki `User guide`; no Terminal fallback. |
+| 2026-06-06T15:02:00+0300 | `INST-FAKE-001` | Opened Instance then Fake Instance and clicked Create | UI created a real fake KSP instance at `/Users/elijahn/Library/Application Support/Steam/SteamApps/common/KSP Fake`; CKAN CLI listed `KSP Fake`; later renamed for audit. |
+| 2026-06-06T15:05:00+0300 | `INST-MANAGE-001`, `INST-MANAGE-002` | Opened Manage Instances and used row actions | Manage sheet listed real and audit instances; set audit fake as default, revealed its folder in Finder, renamed it to `MACKAN Audit Renamed`, forgot cloned/added audit rows, and restored `Авто KSP` as selected/default. |
+| 2026-06-06T15:10:00+0300 | `INST-MANAGE-002` | Clicked Show in Finder for audit fake row | Finder opened `.../Steam/steamapps/common` with `KSP Fake` selected; a Codex-to-Finder TCC prompt appeared during inspection and was allowed. |
+| 2026-06-06T15:15:00+0300 | `INST-CLONE-001` | Cloned audit fake instance | Clone sheet loaded source/default destination, clone completed to `/Users/elijahn/Library/Application Support/Steam/SteamApps/common/KSP Fake Clone`, CKAN CLI listed `MACKAN Audit Renamed Clone`. |
+| 2026-06-06T15:18:00+0300 | `INST-MANAGE-002` | Forgot cloned audit instance | Confirmation text stated the instance would be removed from CKAN's instance list and the game folder would not be deleted; CKAN CLI removed the clone row and the folder still existed. |
+| 2026-06-06T15:21:00+0300 | `INST-ADD-001` | Added the existing clone folder as a game instance | Add form accepted `/Users/elijahn/Library/Application Support/Steam/SteamApps/common/KSP Fake Clone` with name `MACKAN Audit Added`; CKAN CLI listed the added instance. |
+| 2026-06-06T15:25:00+0300 | `INST-LAUNCHCMD-001`, `APP-MENU-002` | Edited launch command line and launched missing command | Saved `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/missing-launch-command`; Instance menu submenu reflected the saved value. |
+| 2026-06-06T15:27:00+0300 | `WIN-ALERT-004`, `APP-MENU-002` | Launched missing command from submenu and via Launch Game | Both launch attempts showed `Failed to launch game` with command details and `Retry Launch`; no real KSP process was started. |
+| 2026-06-06T15:30:00+0300 | `INST-LAUNCHCMD-001` | Reset launch command lines to defaults | Reset to Defaults then Save restored the launch submenu to `./KSP.app/Contents/MacOS/KSP`. |
+| 2026-06-06T15:36:00+0300 | `APP-MENU-001`, `INST-MANAGE-002` | Cleaned audit registry state and smoke-opened direct Add/Clone menu sheets | Final CKAN CLI registry contained only `Авто KSP` as default; audit folders `KSP Fake` and `KSP Fake Clone` remained on disk, matching the Forget contract. Direct menu Add/Clone sheets opened and were cancelled without mutation. |
 
 ## Defects
 
@@ -198,6 +208,23 @@
 | Task 8 HelpLinkTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-help-link-tests.log` | `APP-MENU-005` |
 | Task 8 DiagnosticsBundleTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-diagnostics-bundle-tests.log` | `APP-DIAGNOSTICS-001` |
 | Task 8 ServiceDispatcherTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-service-dispatcher-tests-net10.log` | `APP-UPDATE-*`; sidecar dispatcher |
+| Task 9 AppModelTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9-app-model-tests.log` | `APP-MENU-001`; `APP-MENU-002`; `INST-*` |
+| Task 9 LaunchErrorPresentationStateTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9-launch-error-tests.log` | `WIN-ALERT-004` |
+| Task 9 CoreMackanInstanceProviderTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9-core-instance-provider-tests-net10.log` | `INST-*`; `APP-MENU-001`; `APP-MENU-002` |
+| Task 9 direct Add menu sheet screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/add-menu-open.png` | `APP-MENU-001`; `INST-ADD-001` |
+| Task 9 direct Clone menu sheet screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/clone-menu-open.png` | `APP-MENU-001`; `INST-CLONE-001` |
+| Task 9 fake instance screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/fake-after-create.png` | `INST-FAKE-001`; `APP-MENU-001` |
+| Task 9 Manage Instances screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/manage-open.png` | `INST-MANAGE-001`; `INST-MANAGE-002` |
+| Task 9 Finder reveal screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/finder-after-allow.png` | `INST-MANAGE-002` |
+| Task 9 rename screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/manage-after-rename-ascii-keycode.png` | `INST-MANAGE-002` |
+| Task 9 clone result screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/clone-after-create.png` | `INST-CLONE-001` |
+| Task 9 add result screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/add-after-submit.png` | `INST-ADD-001` |
+| Task 9 launch command save menu snapshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/instance-menu-after-launch-command-save.txt` | `INST-LAUNCHCMD-001`; `APP-MENU-002` |
+| Task 9 launch command reset menu snapshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/instance-menu-after-launch-command-reset.txt` | `INST-LAUNCHCMD-001`; `APP-MENU-002` |
+| Task 9 launch submenu failure alert screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/launch-failure-alert.png` | `WIN-ALERT-004`; `APP-MENU-002` |
+| Task 9 default Launch Game failure alert screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/launch-default-failure-alert.png` | `WIN-ALERT-004`; `APP-MENU-002` |
+| Task 9 final cleanup registry snapshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/ckan-instances-after-final-cleanup.txt` | `INST-MANAGE-001`; `INST-MANAGE-002`; cleanup |
+| Task 9 post menu-open/cancel registry snapshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task9/ckan-instances-after-menu-open-cancel.txt` | `APP-MENU-001`; cleanup |
 
 ## Automated Proof Mapping Summary
 
