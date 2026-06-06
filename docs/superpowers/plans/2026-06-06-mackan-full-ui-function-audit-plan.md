@@ -1232,7 +1232,7 @@ Task 13 completion notes:
 - Inspect/fix if needed: `macosx/MACKAN/Sources/MACKANKit/AppModel+Maintenance.swift`
 - Inspect/fix if needed: `MACKAN.Service/CoreMackanMaintenanceProvider.cs`
 
-- [ ] **Step 1: Exercise scan/unmanaged files**
+- [x] **Step 1: Exercise scan/unmanaged files**
 
 Use Maintenance menu and sidebar:
 
@@ -1245,7 +1245,9 @@ Close sheet.
 
 Expected: scan result is visible; unmanaged list reflects CKAN Core scan state.
 
-- [ ] **Step 2: Exercise history and play time**
+Completed: same-session maintenance service transcript scanned selected instance `Авто KSP` with `changed=false`, `detectedDllCount=4`, `detectedDlcCount=2`, and returned 6 unmanaged file rows. Native alert/sheet screenshots were not captured in the hidden/offscreen pass, so matrix rows are marked `partial`.
+
+- [x] **Step 2: Exercise history and play time**
 
 Use Maintenance sidebar:
 
@@ -1261,7 +1263,9 @@ Refresh/reopen Play Time.
 
 Expected: history actions stage correct preview rows; play time persists the edited value.
 
-- [ ] **Step 3: Exercise download statistics**
+Completed: installation history returned 33 entries. Play time was changed from `2.116757240138889` to `2.126757240138889`, verified, then restored to `2.116757240138889`.
+
+- [x] **Step 3: Exercise download statistics**
 
 Use Maintenance sidebar:
 
@@ -1275,7 +1279,9 @@ Resize sheet.
 
 Expected: chart/table do not overlap and link actions work or are disabled.
 
-- [ ] **Step 4: Exercise cache maintenance**
+Completed: download statistics returned 3 host rows; Swift `DownloadStatisticsChartTests` passed. Live chart resizing/link UI was not captured, so matrix row is marked `partial`.
+
+- [x] **Step 4: Exercise cache maintenance**
 
 Use Maintenance > Clean Cache:
 
@@ -1289,7 +1295,9 @@ Close sheet.
 
 Expected: result sheet/event text reflects cache mutation. Empty cache after purge is acceptable.
 
-- [ ] **Step 5: Exercise deduplicate and repair**
+Completed: cache info started at 127 files / `10.2 GiB`; purge-to-limit was a no-op because no cache limit is configured; clear-cache purged 127 files / `10.2 GiB`; direct filesystem verification showed 0 cache files afterward.
+
+- [x] **Step 5: Exercise deduplicate and repair**
 
 Use Maintenance menu:
 
@@ -1304,18 +1312,22 @@ Record result events.
 
 Expected: result sheets show captured Core events; app refreshes selected-instance state after repair.
 
-- [ ] **Step 6: Run maintenance tests**
+Completed: deduplicate completed and reported `No duplicate installed files found.` Repair Registry failed live with `An item with the same key has already been added. Key: GameData/ContractPacks`; matrix row `MAINT-REPAIR-001` is marked `fail`.
+
+- [x] **Step 6: Run maintenance tests**
 
 Run:
 
 ```sh
 swift test --package-path macosx/MACKAN --filter DownloadStatisticsChartTests
-dotnet test Tests/Tests.csproj --filter CoreMackanMaintenanceProviderTests
+dotnet test Tests/Tests.csproj --framework net10.0 --filter "FullyQualifiedName~CoreMackanMaintenanceProviderTests"
 ```
 
 Expected: all exit `0`.
 
-- [ ] **Step 7: Commit maintenance evidence**
+Completed: `swift test --package-path macosx/MACKAN --filter DownloadStatisticsChartTests` passed 4/4. Scoped `.NET` command `dotnet test Tests/Tests.csproj --framework net10.0 --filter "FullyQualifiedName~CoreMackanMaintenanceProviderTests"` passed 9/9.
+
+- [x] **Step 7: Commit maintenance evidence**
 
 Run:
 
@@ -1325,6 +1337,12 @@ git commit -m "docs: audit MACKAN maintenance workflows"
 ```
 
 Expected: commit succeeds.
+
+Task 14 completion notes:
+- Maintenance evidence is recorded in `docs/mackan/full-ui-function-audit-evidence-2026-06-06.md`.
+- Matrix rows `APP-MENU-004`, `WIN-ALERT-001`, `WIN-ALERT-002`, `SID-MAINT-001` and `MAINT-*` now reference Task 14 artifacts.
+- Real destructive mutation performed: CKAN download cache under `/Users/elijahn/.local/share/CKAN/downloads` was cleared from 127 files / `10.2 GiB` to 0 files.
+- Open defect added: `MAINT-REPAIR-001` / `maintenance-repair-duplicate-key-contractpacks`.
 
 ## Task 15: Settings Audit
 
