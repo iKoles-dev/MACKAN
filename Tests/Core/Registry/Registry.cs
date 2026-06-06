@@ -307,6 +307,49 @@ namespace Tests.Core.Registry
         }
 
         [Test]
+        public void Repair_WithDuplicateInstalledDirectoryOwners_ReindexesSingleOwner()
+        {
+            // Arrange
+            var user = new NullUser();
+            using (var inst = new DisposableKSP())
+            using (var repo = new TemporaryRepository(
+                @"{
+                    ""spec_version"": ""v1.4"",
+                    ""identifier"":   ""DuplicateOwnerA"",
+                    ""author"":       ""Modder"",
+                    ""version"":      ""1.0.0"",
+                    ""download"":     ""https://example.invalid/DuplicateOwnerA.zip"",
+                    ""ksp_version"":  ""1.12.5""
+                }",
+                @"{
+                    ""spec_version"": ""v1.4"",
+                    ""identifier"":   ""DuplicateOwnerB"",
+                    ""author"":       ""Modder"",
+                    ""version"":      ""1.0.0"",
+                    ""download"":     ""https://example.invalid/DuplicateOwnerB.zip"",
+                    ""ksp_version"":  ""1.12.5""
+                }"))
+            using (var repoData = new TemporaryRepositoryData(user, repo.repo))
+            {
+                var registry = new CKAN.Registry(repoData.Manager, repo.repo);
+                var firstMod = registry.GetModuleByVersion("DuplicateOwnerA", "1.0.0");
+                var secondMod = registry.GetModuleByVersion("DuplicateOwnerB", "1.0.0");
+                var duplicateDir = inst.KSP.ToAbsoluteGameDir("GameData/ContractPacks");
+                Directory.CreateDirectory(duplicateDir);
+                registry.RegisterModule(firstMod!,  new[] { duplicateDir }, inst.KSP, false);
+                registry.RegisterModule(secondMod!, new[] { duplicateDir }, inst.KSP, false);
+
+                // Act
+                registry.Repair();
+
+                // Assert
+                Assert.That(
+                    registry.InstalledFileInfo().Count(ifi => ifi.relPath == "GameData/ContractPacks"),
+                    Is.EqualTo(1));
+            }
+        }
+
+        [Test]
         public void HasUpdate_WithUpgradeableManuallyInstalledMod_ReturnsTrue()
         {
             // Arrange

@@ -303,7 +303,25 @@ namespace CKAN
                                             .Select(file => new KeyValuePair<string, string>(file,
                                                                                              module.identifier)))
                 // We need case insensitive path matching on Windows
-                .ToDictionary(Platform.PathComparer);
+                .GroupBy(kvp => kvp.Key, Platform.PathComparer)
+                .ToDictionary(
+                    grp => grp.Key,
+                    grp => {
+                        var owners = grp.Select(kvp => kvp.Value)
+                                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                                        .OrderBy(owner => owner, StringComparer.OrdinalIgnoreCase)
+                                        .ToArray();
+                        if (owners.Length > 1)
+                        {
+                            log.WarnFormat(
+                                "Duplicate installed file ownership for {0}: {1}; keeping {2}",
+                                grp.Key,
+                                string.Join(", ", owners),
+                                owners[0]);
+                        }
+                        return owners[0];
+                    },
+                    Platform.PathComparer);
         }
 
         /// <summary>

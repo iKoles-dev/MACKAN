@@ -1676,6 +1676,9 @@ Task 17 progress notes:
 - `CAT-SEARCH-001` was fixed next at the parser/documentation layer: `identifier:` and `id:` now match module identifiers by prefix, and Search Syntax documents the token.
 - Regression tests: `AppModelTests.testCatalogAdvancedSearchMatchesIdentifierScopedTokens` and `AppModelTests.testCatalogSearchHelpDocumentsAllSupportedAdvancedTokenFamilies`.
 - Verification: targeted tests passed and full Swift package passed 295/295; logs are under `/tmp/mackan-full-ui-function-audit-2026-06-06/task17-search/`.
+- `MAINT-REPAIR-001` was fixed at the CKAN core registry layer: `Registry.ReindexInstalled()` now tolerates duplicate installed-file/directory owners and keeps a deterministic owner.
+- Regression test: `RegistryTests.Repair_WithDuplicateInstalledDirectoryOwners_ReindexesSingleOwner`.
+- Verification: targeted registry test passed 1/1, `CoreMackanMaintenanceProviderTests` passed 9/9, `Tests.Core.Registry` passed 40/40, scoped MACKAN net10 passed 1451/1451, and a rebuilt-service real repair retest on `Авто KSP` completed with `error=null`; logs are under `/tmp/mackan-full-ui-function-audit-2026-06-06/task17-repair/`.
 
 ## Task 18: P2/P3 Triage
 
