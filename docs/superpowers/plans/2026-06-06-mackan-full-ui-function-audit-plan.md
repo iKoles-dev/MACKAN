@@ -1354,7 +1354,7 @@ Task 14 completion notes:
 - Inspect/fix if needed: `macosx/MACKAN/Sources/MACKANKit/AppModel+Settings.swift`
 - Inspect/fix if needed: `MACKAN.Service/CoreMackanSettingsProvider.cs`
 
-- [ ] **Step 1: Exercise General and Cache panes**
+- [x] **Step 1: Exercise General and Cache panes**
 
 Use Settings:
 
@@ -1373,14 +1373,16 @@ Save.
 
 Expected: Save enablement matches changes and saved values reload.
 
-- [ ] **Step 2: Exercise Compatibility and Stability panes**
+Completed: same-session sidecar pass toggled all General booleans and restored them. Cache limit changed from unlimited to a finite audit value and restored to unlimited; cache folder migration/file panel UI was not exercised.
+
+- [x] **Step 2: Exercise Compatibility and Stability panes**
 
 Use Settings:
 
 ```text
 Open Compatibility.
 Toggle one known game version.
-Add a custom version "999.999-mackan-audit".
+Add a custom version "999.999".
 Save.
 Clear the custom version if UI supports removal.
 Open Stability.
@@ -1391,7 +1393,9 @@ Clear the override.
 
 Expected: values persist through sidecar and selected-instance refresh follows save.
 
-- [ ] **Step 3: Exercise Hosts and Filters panes**
+Completed: compatible version `999.999` was added and then removed; deleting the audit-created `compatible_ksp_versions.json` restored the pre-run default/legacy sidecar state. Stability overall and `ContractConfigurator` module override were changed and restored.
+
+- [x] **Step 3: Exercise Hosts and Filters panes**
 
 Use Settings:
 
@@ -1411,7 +1415,9 @@ Save.
 
 Expected: list movement, preset dedupe and save state are visible.
 
-- [ ] **Step 4: Exercise Launch, Auth and Plugins panes**
+Completed: preferred hosts were temporarily set to `archive.org`, placeholder and `spacedock.info`, then restored. Global and instance filters added duplicate audit entries, deduped through the route, and restored.
+
+- [x] **Step 4: Exercise Launch, Auth and Plugins panes**
 
 Use Settings:
 
@@ -1430,18 +1436,22 @@ Verify unsupported status text and no broken controls.
 
 Expected: dummy token add/remove works without exposing raw saved token; Plugins pane is intentionally unsupported and clear.
 
-- [ ] **Step 5: Run settings tests**
+Completed: launch command `MACKAN_AUDIT_COMMAND` was saved and restored. Dummy auth host `mackan-audit.invalid` was added, returned only preview `********oken`, did not expose a raw `token` field, and was removed. Plugins source was inspected, but no row-specific live UI or automation proof exists, so `SET-PLUGINS-001` remains `fail` / `proof-missing`.
+
+- [x] **Step 5: Run settings tests**
 
 Run:
 
 ```sh
 swift test --package-path macosx/MACKAN --filter PreferencesLayoutPolicyTests
-dotnet test Tests/Tests.csproj --filter CoreMackanSettingsProviderTests
+dotnet test Tests/Tests.csproj --framework net10.0 --filter "FullyQualifiedName~CoreMackanSettingsProviderTests"
 ```
 
 Expected: all exit `0`.
 
-- [ ] **Step 6: Commit settings evidence**
+Completed: Swift `PreferencesLayoutPolicyTests` passed 2/2. Scoped `.NET` command `dotnet test Tests/Tests.csproj --framework net10.0 --filter "FullyQualifiedName~CoreMackanSettingsProviderTests"` passed 7/7.
+
+- [x] **Step 6: Commit settings evidence**
 
 Run:
 
@@ -1451,6 +1461,12 @@ git commit -m "docs: audit MACKAN settings workflows"
 ```
 
 Expected: commit succeeds.
+
+Task 15 completion notes:
+- Settings evidence is recorded in `docs/mackan/full-ui-function-audit-evidence-2026-06-06.md`.
+- Matrix rows `SET-GENERAL-001`, `SET-CACHE-001`, `SET-COMPAT-001`, `SET-STABILITY-001`, `SET-HOSTS-001`, `SET-FILTERS-001`, `SET-LAUNCH-001` and `SET-AUTH-001` now reference Task 15 artifacts.
+- All reversible dummy settings were restored. Compatibility restore required deleting the audit-created `compatible_ksp_versions.json` to return to the pre-run default/legacy state.
+- `SET-PLUGINS-001` remains `fail` because there is still no row-specific automation or live UI capture for the unsupported notice and CKAN links.
 
 ## Task 16: Adaptive Layout, Accessibility and Localization Audit
 
