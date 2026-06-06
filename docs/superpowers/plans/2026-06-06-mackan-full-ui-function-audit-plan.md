@@ -1667,6 +1667,13 @@ plan, not by this evidence update step.
 
 Run Step 1 again after each fix commit. Continue until Step 1 exits `0`.
 
+Task 17 progress notes:
+- `CAT-ACTION-001` was selected first because it could mutate the wrong module after search/filter selection drift.
+- Source fix: `AppModel.selectedModule` now resolves through `filteredModules` instead of all `modules`.
+- Regression test: `AppModelTests.testSelectedModuleIgnoresHiddenFilteredSelectionForCatalogActions`.
+- Verification: targeted test passed and full Swift package passed 294/294; logs are under `/tmp/mackan-full-ui-function-audit-2026-06-06/task17/`.
+- Matrix/evidence status is `fixed-automated; live retest pending` rather than fully closed, because no rebuilt-app visual retest was run in this pass.
+
 ## Task 18: P2/P3 Triage
 
 **Files:**
