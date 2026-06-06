@@ -47,6 +47,12 @@
 | 2026-06-06T14:42:10+0300 | `macosx/MACKAN/scripts/verify-ui-ux-audit-evidence.sh /tmp/mackan-full-ui-function-audit-2026-06-06` | exit 1 | Expected at start-state stage: verifier rejected incomplete mandatory checklist item `Instances: add, clone, fake, rename, forget, set default, reveal folder, launch warnings.` Raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/verify-ui-ux-audit-evidence-task7.log`. |
 | 2026-06-06T14:42:30+0300 | `\"/Applications/CKAN.app/Contents/MacOS/arm64/CKAN-CmdLine\" instance list` | exit 0 | Raw output `/tmp/mackan-full-ui-function-audit-2026-06-06/ckan-instances.txt`; default instance `Авто KSP`. |
 | 2026-06-06T14:42:34+0300 | `\"/Applications/CKAN.app/Contents/MacOS/arm64/CKAN-CmdLine\" list` | exit 0 | Raw output `/tmp/mackan-full-ui-function-audit-2026-06-06/ckan-installed-mods.txt`; KSP `1.12.5.3190`, installed/unmanaged/upgradable module markers captured. |
+| 2026-06-06T14:47:06+0300 | `swift test --package-path macosx/MACKAN --filter DiagnosticsBundleTests` | exit 0 | 1 passed, 0 failed; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-diagnostics-bundle-tests.log`. |
+| 2026-06-06T14:47:07+0300 | `swift test --package-path macosx/MACKAN --filter HelpLinkTests` | exit 0 | 5 passed, 0 failed; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-help-link-tests.log`. |
+| 2026-06-06T14:47:10+0300 | `/opt/homebrew/bin/dotnet test Tests/Tests.csproj --framework net10.0 --filter ServiceDispatcherTests` | exit 0 | 86 passed, 0 failed; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-service-dispatcher-tests-net10.log`. |
+| 2026-06-06T14:47:30+0300 | `open /Users/elijahn/Library/Caches/MACKAN/build/MACKAN.app; osascript ... menu enablement snapshot` | exit 0 | MACKAN frontmost with 1 window; menu enablement saved to `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-menu-enablements.txt`. |
+| 2026-06-06T14:48:00+0300 | `Help/About/Update/Diagnostics menu automation plus screenshots` | exit 0 | Captured About, stable update error sheet, diagnostics alert, clipboard head and diagnostics bundle path. |
+| 2026-06-06T14:50:00+0300 | `Help > User Guide` | exit 0 | External link opened in Arc to GitHub `KSP-CKAN/CKAN` wiki `User guide`; screenshot `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-user-guide-external.png`. |
 
 ## Baseline Git Status Verbatim
 
@@ -148,6 +154,10 @@
 
 | Time | Matrix Row | Action | Observed State Change |
 | --- | --- | --- | --- |
+| 2026-06-06T14:48:00+0300 | `APP-ABOUT-001` | Opened MACKAN menu then About MACKAN | About sheet displayed app `0.1.0`, service/core `v1.36.5.26146`, protocol `1`, .NET `10.0.5`, macOS `26.5.0`, Arm64; Return closed sheet. |
+| 2026-06-06T14:48:00+0300 | `APP-UPDATE-001` | Opened Help then Check for Updates | Update sheet displayed stable-channel visible error state: current `v1.36.5.26146`, latest unavailable, manual download required, metadata unreadable; no crash/hang. |
+| 2026-06-06T14:49:00+0300 | `APP-DIAGNOSTICS-001` | Opened Help then Report Client Issue | Diagnostics report copied to clipboard, diagnostics zip written at `/var/folders/f3/71_ydpz12073fp4rj6zxd1tr0000gn/T/MACKAN-Diagnostics-20260606T114919Z.zip`, alert shown and closed. |
+| 2026-06-06T14:50:00+0300 | `APP-MENU-005` | Opened Help then User Guide | Arc opened GitHub `KSP-CKAN/CKAN` wiki `User guide`; no Terminal fallback. |
 
 ## Defects
 
@@ -178,6 +188,16 @@
 | UI/UX verifier failure log | `/tmp/mackan-full-ui-function-audit-2026-06-06/verify-ui-ux-audit-evidence-task7.log` | Task 7 |
 | CKAN instance list | `/tmp/mackan-full-ui-function-audit-2026-06-06/ckan-instances.txt` | Task 7 |
 | CKAN installed modules | `/tmp/mackan-full-ui-function-audit-2026-06-06/ckan-installed-mods.txt` | Task 7 |
+| Task 8 menu enablement snapshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-menu-enablements.txt` | `APP-MENU-*` |
+| Task 8 About screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-about.png` | `APP-ABOUT-001` |
+| Task 8 update sheet screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-update-open.png` | `APP-UPDATE-001` |
+| Task 8 diagnostics alert screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-diagnostics-alert.png` | `APP-DIAGNOSTICS-001` |
+| Task 8 diagnostics clipboard excerpt | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-diagnostics-clipboard-head.txt` | `APP-DIAGNOSTICS-001` |
+| Task 8 diagnostics bundle path | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-diagnostics-bundles.txt` | `APP-DIAGNOSTICS-001` |
+| Task 8 User Guide external screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-user-guide-external.png` | `APP-MENU-005` |
+| Task 8 HelpLinkTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-help-link-tests.log` | `APP-MENU-005` |
+| Task 8 DiagnosticsBundleTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-diagnostics-bundle-tests.log` | `APP-DIAGNOSTICS-001` |
+| Task 8 ServiceDispatcherTests log | `/tmp/mackan-full-ui-function-audit-2026-06-06/task8-service-dispatcher-tests-net10.log` | `APP-UPDATE-*`; sidecar dispatcher |
 
 ## Automated Proof Mapping Summary
 
