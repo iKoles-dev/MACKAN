@@ -1125,7 +1125,7 @@ Task 12 completion notes:
 - Inspect/fix if needed: `MACKAN.Service/CoreMackanExportProvider.cs`
 - Inspect/fix if needed: `MACKAN.Service/CoreMackanOperationProvider.cs`
 
-- [ ] **Step 1: Export mod list formats**
+- [x] **Step 1: Export mod list formats**
 
 Use Mods menu:
 
@@ -1140,7 +1140,7 @@ Save each file under /tmp/mackan-full-ui-function-audit-2026-06-06/.
 
 Expected: each save panel succeeds and each saved file is non-empty.
 
-- [ ] **Step 2: Export modpack**
+- [x] **Step 2: Export modpack**
 
 Use Mods menu:
 
@@ -1160,7 +1160,7 @@ Save under /tmp/mackan-full-ui-function-audit-2026-06-06/MACKAN-Audit-Pack.ckan.
 
 Expected: exported `.ckan` file exists and is non-empty.
 
-- [ ] **Step 3: Install from `.ckan`**
+- [x] **Step 3: Install from `.ckan`**
 
 Use Mods menu:
 
@@ -1174,7 +1174,7 @@ Close after recording result.
 
 Expected: app either installs/previews valid file content or reports typed `.ckan` incompatibility; silent no-op is `P1`.
 
-- [ ] **Step 4: Import downloads**
+- [x] **Step 4: Import downloads**
 
 Use Mods menu:
 
@@ -1189,7 +1189,7 @@ Run Import.
 
 Expected: app reports matched imports, preview or operation result, and delete-original behavior matches toggle.
 
-- [ ] **Step 5: Run file/export tests**
+- [x] **Step 5: Run file/export tests**
 
 Run:
 
@@ -1203,7 +1203,7 @@ dotnet test Tests/Tests.csproj --filter CoreMackanOperationProviderTests
 
 Expected: all exit `0`.
 
-- [ ] **Step 6: Commit file workflow evidence**
+- [x] **Step 6: Commit file workflow evidence**
 
 Run:
 
@@ -1213,6 +1213,14 @@ git commit -m "docs: audit MACKAN file workflows"
 ```
 
 Expected: commit succeeds.
+
+Task 13 completion notes:
+
+- Native Export Mod List menu opened `NSSavePanel`, but hidden/offscreen automation could not reliably drive target-directory selection; functional export files were produced through the same app sidecar `exports.modList` route and the save-panel limitation is recorded as partial UI evidence.
+- `MACKAN-Audit-Pack.ckan` was generated with requested metadata and relationship assignments through `exports.modpack`.
+- Same-session `.ckan` install installed `MACKAN-Audit-Pack` as a metapackage, then same-session cleanup removed it; cleanup checks found no leftover audit metapackage.
+- Import Downloads used disposable copies of a real CKAN zip: delete-original removed the test copy, and preview-before-install produced an install change without leaving `AtomicTechFlags-ATHSS` installed.
+- Swift file workflow tests passed. All-target .NET command hit the known macOS build baseline failure; scoped `--framework net10.0` export/operation provider run passed 24/24.
 
 ## Task 14: Maintenance Audit
 
