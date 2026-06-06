@@ -14,12 +14,12 @@
 | Git status | captured verbatim at `/tmp/mackan-full-ui-function-audit-2026-06-06/baseline/git-status-short.txt`; existing dirty/untracked worktree retained |
 | Built app path | `/Users/elijahn/Library/Caches/MACKAN/build/MACKAN.app` |
 | App version | `0.1.0` (`CFBundleShortVersionString` and `CFBundleVersion`) |
-| Selected instance | not captured |
+| Selected instance | CKAN CLI selected/default instance: `Авто KSP`, KSP `1.12.5.3190`, path `/Users/elijahn/Library/Application Support/Steam/SteamApps/common/Kerbal Space Program`; raw output `/tmp/mackan-full-ui-function-audit-2026-06-06/ckan-instances.txt` |
 | Repository list | not captured |
-| Installed modules summary | not captured |
+| Installed modules summary | CKAN CLI installed modules captured at `/tmp/mackan-full-ui-function-audit-2026-06-06/ckan-installed-mods.txt`; includes up-to-date, auto-installed, unmanaged and upgradable markers |
 | Current staged changes | not captured |
 | Settings summary | not captured |
-| Initial screenshots | not captured |
+| Initial screenshots | `/tmp/mackan-full-ui-function-audit-2026-06-06/main-window.png`; `/tmp/mackan-full-ui-function-audit-2026-06-06/adaptive-minimum.png`; `/tmp/mackan-full-ui-function-audit-2026-06-06/adaptive-medium.png`; `/tmp/mackan-full-ui-function-audit-2026-06-06/adaptive-wide.png` |
 | Strict readiness JSON | not captured |
 
 ## Command Log
@@ -43,6 +43,10 @@
 | 2026-06-06T14:33:10+0300 | `macosx/MACKAN/scripts/build-dev-app.sh` | exit 0 | Built `/Users/elijahn/Library/Caches/MACKAN/build/MACKAN.app`; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/baseline/build-dev-app.log`. |
 | 2026-06-06T14:33:30+0300 | `macosx/MACKAN/scripts/verify-app-bundle.sh --mode auto --require-icon --require-version 0.1.0 /Users/elijahn/Library/Caches/MACKAN/build/MACKAN.app` | exit 0 | Verified single-arch app bundle; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/baseline/verify-app-bundle.log`. |
 | 2026-06-06T14:33:30+0300 | `macosx/MACKAN/scripts/verify-app-launch.sh --timeout 25 /Users/elijahn/Library/Caches/MACKAN/build/MACKAN.app` | exit 0 | Verified GUI launch without Terminal and with 1 visible window; raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/baseline/verify-app-launch.log`. |
+| 2026-06-06T14:41:05+0300 | `macosx/MACKAN/scripts/run-ui-ux-audit.sh --wait-catalog 60 --output /tmp/mackan-full-ui-function-audit-2026-06-06 /Users/elijahn/Library/Caches/MACKAN/build/MACKAN.app` | exit 0 | Created real-app scaffold with main/adaptive screenshots, metadata, launch smoke, window summary and checklist. Catalog readiness mode was `inconclusive-wait`. |
+| 2026-06-06T14:42:10+0300 | `macosx/MACKAN/scripts/verify-ui-ux-audit-evidence.sh /tmp/mackan-full-ui-function-audit-2026-06-06` | exit 1 | Expected at start-state stage: verifier rejected incomplete mandatory checklist item `Instances: add, clone, fake, rename, forget, set default, reveal folder, launch warnings.` Raw log `/tmp/mackan-full-ui-function-audit-2026-06-06/verify-ui-ux-audit-evidence-task7.log`. |
+| 2026-06-06T14:42:30+0300 | `\"/Applications/CKAN.app/Contents/MacOS/arm64/CKAN-CmdLine\" instance list` | exit 0 | Raw output `/tmp/mackan-full-ui-function-audit-2026-06-06/ckan-instances.txt`; default instance `Авто KSP`. |
+| 2026-06-06T14:42:34+0300 | `\"/Applications/CKAN.app/Contents/MacOS/arm64/CKAN-CmdLine\" list` | exit 0 | Raw output `/tmp/mackan-full-ui-function-audit-2026-06-06/ckan-installed-mods.txt`; KSP `1.12.5.3190`, installed/unmanaged/upgradable module markers captured. |
 
 ## Baseline Git Status Verbatim
 
@@ -165,6 +169,15 @@
 | Build dev app log | `/tmp/mackan-full-ui-function-audit-2026-06-06/baseline/build-dev-app.log` | Task 6 |
 | Bundle verification log | `/tmp/mackan-full-ui-function-audit-2026-06-06/baseline/verify-app-bundle.log` | Task 6 |
 | Launch verification log | `/tmp/mackan-full-ui-function-audit-2026-06-06/baseline/verify-app-launch.log` | `APP-STARTUP-001`; Task 6 |
+| Main window screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/main-window.png` | Task 7 |
+| Adaptive minimum screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/adaptive-minimum.png` | Task 7; adaptive layout rows |
+| Adaptive medium screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/adaptive-medium.png` | Task 7; adaptive layout rows |
+| Adaptive wide screenshot | `/tmp/mackan-full-ui-function-audit-2026-06-06/adaptive-wide.png` | Task 7; adaptive layout rows |
+| UI/UX audit metadata | `/tmp/mackan-full-ui-function-audit-2026-06-06/audit-metadata.json` | Task 7 |
+| UI/UX audit checklist | `/tmp/mackan-full-ui-function-audit-2026-06-06/ui-ux-audit.md` | Task 7 |
+| UI/UX verifier failure log | `/tmp/mackan-full-ui-function-audit-2026-06-06/verify-ui-ux-audit-evidence-task7.log` | Task 7 |
+| CKAN instance list | `/tmp/mackan-full-ui-function-audit-2026-06-06/ckan-instances.txt` | Task 7 |
+| CKAN installed modules | `/tmp/mackan-full-ui-function-audit-2026-06-06/ckan-installed-mods.txt` | Task 7 |
 
 ## Automated Proof Mapping Summary
 
