@@ -2,6 +2,7 @@
 
 Date: 2026-06-06
 Source spec: `docs/superpowers/specs/2026-06-06-mackan-full-ui-function-audit-design.md`
+Evidence log: `docs/mackan/full-ui-function-audit-evidence-2026-06-06.md`
 
 ## Status Values
 
