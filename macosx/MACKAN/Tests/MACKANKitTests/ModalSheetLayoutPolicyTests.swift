@@ -54,4 +54,16 @@ final class ModalSheetLayoutPolicyTests: XCTestCase {
         XCTAssertEqual(fields?.url, "https://example.invalid/sol.tar.gz")
         XCTAssertNil(AddRepositorySheetPresentationPolicy.fields(for: "missing", in: repositories))
     }
+
+    func testExportModpackRelationshipListLeavesRoomForMetadataAndFooter() {
+        XCTAssertGreaterThanOrEqual(ModalSheetLayoutPolicy.exportModpackRelationshipListMinimumHeight, 160)
+        XCTAssertLessThanOrEqual(
+            ModalSheetLayoutPolicy.exportModpackRelationshipListMaximumHeight,
+            ModalSheetLayoutPolicy.standardIdealHeight / 2)
+
+        let reservedMetadataAndFooterHeight = 420.0
+        XCTAssertLessThanOrEqual(
+            ModalSheetLayoutPolicy.exportModpackRelationshipListMaximumHeight + reservedMetadataAndFooterHeight,
+            ModalSheetLayoutPolicy.standardMaximumHeight)
+    }
 }
