@@ -511,11 +511,17 @@ struct CatalogView: View {
                     model.sortByHeader(column)
                 } label: {
                     headerContent(column)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier(CatalogGridIdentityPolicy.headerID(for: column))
+                .accessibilityLabel("\(column.title) column")
+                .accessibilityHint(headerHelp(for: column))
                 .help(headerHelp(for: column))
             } else {
                 headerContent(column)
+                    .accessibilityIdentifier(CatalogGridIdentityPolicy.headerID(for: column))
             }
         }
         .padding(.horizontal, 8)
@@ -572,6 +578,9 @@ struct CatalogView: View {
                         handleModuleDoubleClick(module)
                     })
             }
+            .accessibilityIdentifier(CatalogGridIdentityPolicy.moduleCellID(
+                moduleIdentifier: module.identifier,
+                column: column))
         .background(rowBackground(for: module))
     }
 
