@@ -1674,6 +1674,36 @@ final class AppModelTests: XCTestCase {
         XCTAssertTrue(store.savedSearches.isEmpty)
     }
 
+    func testDeletingAppliedSavedCatalogSearchClearsPersistedCatalogFilter() {
+        let savedSearchStore = InMemorySavedModuleSearchStore()
+        let catalogStateStore = InMemoryModuleCatalogStateStore()
+        let model = AppModel(
+            sidecar: FakeSidecar(),
+            savedSearchStore: savedSearchStore,
+            catalogStateStore: catalogStateStore,
+            modules: advancedSearchModules())
+
+        model.searchText = "identifier:Eternal"
+        model.filter = .compatible
+        model.tagFilter = "graphics"
+        let saved = model.saveCurrentSearch(named: "Eternal")
+        XCTAssertNotNil(saved)
+
+        model.searchText = ""
+        model.filter = .all
+        model.tagFilter = nil
+        model.applySavedSearch(saved!.id)
+        model.deleteSavedSearch(saved!.id)
+
+        XCTAssertTrue(model.savedSearches.isEmpty)
+        XCTAssertEqual(model.searchText, "")
+        XCTAssertEqual(model.filter, .all)
+        XCTAssertNil(model.tagFilter)
+        XCTAssertEqual(catalogStateStore.catalogState?.searchText, "")
+        XCTAssertEqual(catalogStateStore.catalogState?.filter, .all)
+        XCTAssertNil(catalogStateStore.catalogState?.tagFilter)
+    }
+
     func testCatalogStatePersistsAndLoadsAcrossRelaunches() {
         let store = InMemoryModuleCatalogStateStore()
         let firstModel = AppModel(sidecar: FakeSidecar(), catalogStateStore: store)
