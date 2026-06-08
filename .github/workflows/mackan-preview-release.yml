@@ -30,8 +30,6 @@ jobs:
 
     env:
       APP_NAME: MACKAN
-      APP_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.app_version || format('0.1.0-preview.{0}', github.run_number) }}
-      PREVIEW_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || 'mackan-preview' }}
       BUILD_ROOT: ${{ runner.temp }}/mackan-preview-build
       GH_TOKEN: ${{ github.token }}
 
@@ -48,6 +46,27 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.sln') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
+
+      - name: Resolve preview metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "$GITHUB_EVENT_NAME" in
+            workflow_dispatch)
+              APP_VERSION="${{ github.event.inputs.app_version }}"
+              PREVIEW_TAG="${{ github.event.inputs.tag_name }}"
+              ;;
+            *)
+              APP_VERSION="0.1.0-preview.${GITHUB_RUN_NUMBER}"
+              PREVIEW_TAG="mackan-preview"
+              ;;
+          esac
+
+          {
+            echo "APP_VERSION=$APP_VERSION"
+            echo "PREVIEW_TAG=$PREVIEW_TAG"
+          } >> "$GITHUB_ENV"
 
       - name: Validate preview inputs
         shell: bash
