@@ -1,6 +1,6 @@
 import Foundation
 
-public struct SidecarHealth: Codable, Equatable {
+public struct SidecarHealth: Codable, Equatable, Sendable {
     public let status: String
     public let protocolVersion: String
     public let ckanVersion: String
