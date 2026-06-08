@@ -25,8 +25,17 @@ namespace CKAN
                 .As<IGameComparator>();
 
             builder.RegisterType<JsonConfiguration>()
-                .As<IConfiguration>()
+                .Named<IConfiguration>("jsonConfiguration")
                 // Technically not needed, but makes things easier
+                .SingleInstance();
+
+            builder.Register(ctx =>
+                    Platform.IsMac
+                        ? new KeychainAuthTokenConfiguration(
+                            ctx.ResolveNamed<IConfiguration>("jsonConfiguration"),
+                            new MacOSKeychainAuthTokenSecretStore())
+                        : ctx.ResolveNamed<IConfiguration>("jsonConfiguration"))
+                .As<IConfiguration>()
                 .SingleInstance();
 
             builder.RegisterType<KspBuildMap>()

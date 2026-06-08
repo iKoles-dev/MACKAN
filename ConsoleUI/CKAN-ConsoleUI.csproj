@@ -18,7 +18,7 @@
     <Prefer32Bit>false</Prefer32Bit>
     <LangVersion>9</LangVersion>
     <Nullable>enable</Nullable>
-    <ApplicationIcon>..\assets\ckan.ico</ApplicationIcon>
+    <ApplicationIcon>..\assets\mackan.ico</ApplicationIcon>
     <TargetFrameworks>net481;net10.0</TargetFrameworks>
     <FileAlignment>512</FileAlignment>
     <ErrorReport>prompt</ErrorReport>
@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net10.0' ">
     <PackageReference Include="System.ServiceModel.Primitives" Version="10.0.652802" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.8" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Core\CKAN-core.csproj">

@@ -17,6 +17,7 @@ StyleCop.Cache
 *.pyc
 node_modules/
 venv/
+.build/
 
 # Build results
 [Dd]ebug/
@@ -52,6 +53,20 @@ bld/
 /.venv/
 
 quotes.txt.dat
+
+# MACKAN local evidence, design exploration, and planning snapshots.
+# Public docs should summarize these instead of committing raw local packets.
+/assets/icon-variants/
+/docs/mackan/release-readiness-evidence-*.md
+/docs/mackan/full-ui-function-audit-*.md
+/docs/mackan/brainstorming*.md
+/docs/mackan/implementation-candidate-backlog.md
+/docs/mackan/next-iteration-plan.md
+/docs/mackan/parity-focus-initial.md
+/docs/mackan/sprint-*.md
+/docs/mackan/sprint-*.txt
+/docs/superpowers/plans/*mackan*.md
+/docs/superpowers/specs/*mackan*.md
 
 ### macOS template
 # General

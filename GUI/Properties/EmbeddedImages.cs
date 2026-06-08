@@ -17,7 +17,7 @@ namespace CKAN.GUI
     public static class EmbeddedImages
     {
         public static readonly Icon? AppIcon = Assembly.GetExecutingAssembly()
-                                                       .GetManifestResourceStream($"CKAN.ckan.ico")
+                                                       .GetManifestResourceStream($"CKAN.mackan.ico")
                                                    is Stream s
                                                        ? new Icon(s)
                                                        : null;

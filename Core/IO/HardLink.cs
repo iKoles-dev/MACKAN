@@ -171,14 +171,15 @@ namespace CKAN.IO
             {
                 StatArg.DeviceID      => "%d",
                 StatArg.InodeNumber   => "%i",
-                StatArg.HardLinkCount => "%h",
+                StatArg.HardLinkCount => Platform.IsMac ? "%l" : "%h",
                 _                     => throw new ArgumentOutOfRangeException(nameof(what),
                                                                                what, "Invalid stat arg"),
             }));
+            var formatOption = Platform.IsMac ? "-f" : "-c";
             foreach (var pathsString in LimitedStringJoins(paths.Select(p => $"\"{p}\""),
                                                            " ", STAT_ARG_MAX))
             {
-                if (Process.Start(new ProcessStartInfo("stat", $"-c \"{fmt}\" {pathsString}")
+                if (Process.Start(new ProcessStartInfo("stat", $"{formatOption} \"{fmt}\" {pathsString}")
                                   {
                                       UseShellExecute        = false,
                                       RedirectStandardOutput = true,

@@ -10,7 +10,7 @@
   <PropertyGroup>
     <ProjectGuid>{A79F9D54-315C-472B-928F-713A5860B2BE}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <ApplicationIcon>..\assets\ckan.ico</ApplicationIcon>
+    <ApplicationIcon>..\assets\mackan.ico</ApplicationIcon>
     <RootNamespace>CKAN.GUI</RootNamespace>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -80,8 +80,8 @@
   </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <ItemGroup>
-    <EmbeddedResource Include="..\assets\ckan.ico">
-      <LogicalName>CKAN.ckan.ico</LogicalName>
+    <EmbeddedResource Include="..\assets\mackan.ico">
+      <LogicalName>CKAN.mackan.ico</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="Resources\*">
       <LogicalName>CKAN.GUI.Resources.%(Filename)%(Extension)</LogicalName>

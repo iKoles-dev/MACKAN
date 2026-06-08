@@ -153,6 +153,7 @@ namespace CKAN.IO
                                                              Platform.FormatPath(grp.Key.relPath)),
                                                100 * doneCount / dupCount);
                         }
+                        tx.Complete();
                     }
                     user.RaiseMessage(Properties.Resources.DoneDeduplicatingFiles,
                                       CkanModule.FmtSize(dupSize));

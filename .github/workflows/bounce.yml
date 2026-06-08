@@ -8,6 +8,7 @@ concurrency: bounce
 
 jobs:
   bounce:
+    if: github.repository == 'KSP-CKAN/CKAN'
     strategy:
       matrix:
         game:

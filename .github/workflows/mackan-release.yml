@@ -1,0 +1,318 @@
+name: Release signed MACKAN
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: MACKAN app and DMG version to stamp into the release artifact
+        required: true
+        default: "0.1.0"
+      notary_timeout:
+        description: notarytool submit wait timeout
+        required: true
+        default: "30m"
+
+permissions:
+  contents: read
+
+jobs:
+  release-mackan:
+    name: Build, sign, notarize, staple, and verify MACKAN DMG
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    env:
+      APP_VERSION: ${{ inputs.app_version }}
+      MACKAN_DEVELOPER_ID_APPLICATION: ${{ secrets.MACKAN_DEVELOPER_ID_APPLICATION }}
+      MACKAN_NOTARY_KEYCHAIN_PROFILE: ${{ secrets.MACKAN_NOTARY_KEYCHAIN_PROFILE }}
+      MACKAN_NOTARY_TIMEOUT: ${{ inputs.notary_timeout }}
+      MACKAN_NOTARIZE: "true"
+      MACKAN_STAPLE: "true"
+      MACKAN_RELEASE_DMG_SMOKE: "true"
+      MACKAN_RELEASE_DMG_CLEAN_SMOKE: "true"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Restore NuGet cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.sln') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Validate release inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${APP_VERSION:-}" || ! "$APP_VERSION" =~ ^[0-9]+[.][0-9]+[.][0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "APP_VERSION must be a non-empty SemVer-like version such as 1.0.0 or 1.0.0-rc.1." >&2
+            exit 1
+          fi
+
+          if [[ -z "${MACKAN_NOTARY_TIMEOUT:-}" || ! "$MACKAN_NOTARY_TIMEOUT" =~ ^[1-9][0-9]*[smh]$ ]]; then
+            echo "MACKAN_NOTARY_TIMEOUT must be a notarytool duration such as 30m, 120s, or 1h." >&2
+            exit 1
+          fi
+
+      - name: Validate release secrets
+        shell: bash
+        env:
+          MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_BASE64: ${{ secrets.MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_BASE64 }}
+          MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD: ${{ secrets.MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD }}
+          MACKAN_NOTARY_APPLE_ID: ${{ secrets.MACKAN_NOTARY_APPLE_ID }}
+          MACKAN_NOTARY_TEAM_ID: ${{ secrets.MACKAN_NOTARY_TEAM_ID }}
+          MACKAN_NOTARY_APP_SPECIFIC_PASSWORD: ${{ secrets.MACKAN_NOTARY_APP_SPECIFIC_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          missing_secrets=()
+          [[ -n "${MACKAN_DEVELOPER_ID_APPLICATION:-}" ]] || missing_secrets+=("MACKAN_DEVELOPER_ID_APPLICATION")
+          [[ -n "${MACKAN_NOTARY_KEYCHAIN_PROFILE:-}" ]] || missing_secrets+=("MACKAN_NOTARY_KEYCHAIN_PROFILE")
+          [[ -n "${MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_BASE64:-}" ]] || missing_secrets+=("MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_BASE64")
+          [[ -n "${MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD:-}" ]] || missing_secrets+=("MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD")
+          [[ -n "${MACKAN_NOTARY_APPLE_ID:-}" ]] || missing_secrets+=("MACKAN_NOTARY_APPLE_ID")
+          [[ -n "${MACKAN_NOTARY_TEAM_ID:-}" ]] || missing_secrets+=("MACKAN_NOTARY_TEAM_ID")
+          [[ -n "${MACKAN_NOTARY_APP_SPECIFIC_PASSWORD:-}" ]] || missing_secrets+=("MACKAN_NOTARY_APP_SPECIFIC_PASSWORD")
+
+          if (( ${#missing_secrets[@]} > 0 )); then
+            printf 'Missing required release secrets:\n' >&2
+            printf '  - %s\n' "${missing_secrets[@]}" >&2
+            exit 1
+          fi
+
+      - name: Create temporary signing keychain
+        id: signing-keychain
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          KEYCHAIN_PATH="$RUNNER_TEMP/mackan-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security default-keychain -s "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+
+          {
+            echo "MACKAN_SIGNING_KEYCHAIN_PATH=$KEYCHAIN_PATH"
+            echo "MACKAN_SIGNING_KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Import Developer ID Application certificate
+        shell: bash
+        env:
+          MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_BASE64: ${{ secrets.MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_BASE64 }}
+          MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD: ${{ secrets.MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          CERTIFICATE_PATH="$RUNNER_TEMP/mackan-developer-id-application.p12"
+          printf '%s' "$MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+
+          security import "$CERTIFICATE_PATH" \
+            -k "$MACKAN_SIGNING_KEYCHAIN_PATH" \
+            -P "$MACKAN_DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -s \
+            -k "$MACKAN_SIGNING_KEYCHAIN_PASSWORD" \
+            "$MACKAN_SIGNING_KEYCHAIN_PATH"
+
+      - name: Store notarytool credentials
+        shell: bash
+        env:
+          MACKAN_NOTARY_APPLE_ID: ${{ secrets.MACKAN_NOTARY_APPLE_ID }}
+          MACKAN_NOTARY_TEAM_ID: ${{ secrets.MACKAN_NOTARY_TEAM_ID }}
+          MACKAN_NOTARY_APP_SPECIFIC_PASSWORD: ${{ secrets.MACKAN_NOTARY_APP_SPECIFIC_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          xcrun notarytool store-credentials "$MACKAN_NOTARY_KEYCHAIN_PROFILE" \
+            --apple-id "$MACKAN_NOTARY_APPLE_ID" \
+            --team-id "$MACKAN_NOTARY_TEAM_ID" \
+            --password "$MACKAN_NOTARY_APP_SPECIFIC_PASSWORD" \
+            --keychain "$MACKAN_SIGNING_KEYCHAIN_PATH" \
+            --validate
+
+          security find-identity -v -p codesigning "$MACKAN_SIGNING_KEYCHAIN_PATH"
+
+      - name: Check signed release readiness
+        shell: bash
+        run: macosx/MACKAN/scripts/release-readiness.sh --strict --require-release-credentials
+
+      - name: Build signed and notarized DMG
+        id: release-dmg
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RELEASE_LOG="$RUNNER_TEMP/mackan-release-dmg.log"
+          macosx/MACKAN/scripts/release-dmg.sh \
+            --notary-timeout "$MACKAN_NOTARY_TIMEOUT" \
+            | tee "$RELEASE_LOG"
+
+          MACKAN_DMG_PATH="$(tail -n 1 "$RELEASE_LOG")"
+          MACKAN_APP_PATH="$HOME/Library/Caches/MACKAN/build/MACKAN.app"
+          MACKAN_PROVENANCE_PATH="${MACKAN_DMG_PATH}.provenance.json"
+          MACKAN_NOTARY_JSON_PATH="${MACKAN_DMG_PATH}.notary.json"
+          MACKAN_CHECKSUMS_PATH="${MACKAN_DMG_PATH}.sha256"
+          MACKAN_RELEASE_SUMMARY_PATH="${MACKAN_DMG_PATH}.release-summary.json"
+          MACKAN_RELEASE_LOG_PATH="$RELEASE_LOG"
+
+          fail_release_artifact() {
+            echo "release artifact validation failed: $1" >&2
+            exit 1
+          }
+
+          require_file() {
+            local description="$1"
+            local path="$2"
+            [[ -f "$path" ]] || fail_release_artifact "$description: $path"
+          }
+
+          [[ -n "$MACKAN_DMG_PATH" ]] || fail_release_artifact "release-dmg.sh final output was empty"
+          [[ "$MACKAN_DMG_PATH" != *$'\n'* ]] || fail_release_artifact "release-dmg.sh final output contained a newline"
+          [[ "$MACKAN_DMG_PATH" == *.dmg ]] || fail_release_artifact "release-dmg.sh final output was not a DMG path: $MACKAN_DMG_PATH"
+          require_file "DMG artifact missing" "$MACKAN_DMG_PATH"
+          require_file "app Info.plist missing" "$MACKAN_APP_PATH/Contents/Info.plist"
+          require_file "provenance artifact missing" "$MACKAN_PROVENANCE_PATH"
+          require_file "notary JSON missing" "$MACKAN_NOTARY_JSON_PATH"
+          require_file "checksum manifest missing" "$MACKAN_CHECKSUMS_PATH"
+          require_file "release summary missing" "$MACKAN_RELEASE_SUMMARY_PATH"
+          [[ -s "$MACKAN_RELEASE_LOG_PATH" ]] || fail_release_artifact "release log missing or empty: $MACKAN_RELEASE_LOG_PATH"
+
+          {
+            echo "MACKAN_DMG_PATH=$MACKAN_DMG_PATH"
+            echo "MACKAN_APP_PATH=$MACKAN_APP_PATH"
+            echo "MACKAN_PROVENANCE_PATH=$MACKAN_PROVENANCE_PATH"
+            echo "MACKAN_NOTARY_JSON_PATH=$MACKAN_NOTARY_JSON_PATH"
+            echo "MACKAN_CHECKSUMS_PATH=$MACKAN_CHECKSUMS_PATH"
+            echo "MACKAN_RELEASE_SUMMARY_PATH=$MACKAN_RELEASE_SUMMARY_PATH"
+            echo "MACKAN_RELEASE_LOG_PATH=$MACKAN_RELEASE_LOG_PATH"
+          } >> "$GITHUB_ENV"
+
+      - name: Verify public release artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          macosx/MACKAN/scripts/verify-release-artifact.sh \
+            --app "$MACKAN_APP_PATH" \
+            --dmg "$MACKAN_DMG_PATH" \
+            --provenance "$MACKAN_PROVENANCE_PATH" \
+            --notary-json "$MACKAN_NOTARY_JSON_PATH" \
+            --require-version "$APP_VERSION" \
+            --require-public-release
+
+      - name: Verify clean install from signed DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          macosx/MACKAN/scripts/test-clean-install-smoke.sh \
+            --timeout 25 \
+            --app-name MACKAN \
+            --require-version "$APP_VERSION" \
+            "$MACKAN_DMG_PATH"
+
+      - name: Verify signed release checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          macosx/MACKAN/scripts/verify-release-checksums.sh \
+            --checksums "$MACKAN_CHECKSUMS_PATH" \
+            "$MACKAN_DMG_PATH" \
+            "$MACKAN_PROVENANCE_PATH" \
+            "$MACKAN_NOTARY_JSON_PATH"
+
+      - name: Verify signed release summary and handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          macosx/MACKAN/scripts/verify-release-summary.sh \
+            --summary "$MACKAN_RELEASE_SUMMARY_PATH" \
+            --version "$APP_VERSION" \
+            --app "$MACKAN_APP_PATH" \
+            --dmg "$MACKAN_DMG_PATH" \
+            --provenance "$MACKAN_PROVENANCE_PATH" \
+            --notary-json "$MACKAN_NOTARY_JSON_PATH" \
+            --checksums "$MACKAN_CHECKSUMS_PATH"
+
+          macosx/MACKAN/scripts/verify-public-release-handoff.sh \
+            --app "$MACKAN_APP_PATH" \
+            --dmg "$MACKAN_DMG_PATH" \
+            --provenance "$MACKAN_PROVENANCE_PATH" \
+            --notary-json "$MACKAN_NOTARY_JSON_PATH" \
+            --checksums "$MACKAN_CHECKSUMS_PATH" \
+            --summary "$MACKAN_RELEASE_SUMMARY_PATH" \
+            --require-version "$APP_VERSION"
+
+      - name: Verify signed release log
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          macosx/MACKAN/scripts/verify-release-log.sh "$MACKAN_RELEASE_LOG_PATH"
+
+      - name: Upload signed notarized DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: MACKAN-signed-notarized-dmg
+          path: ${{ env.MACKAN_DMG_PATH }}
+          if-no-files-found: error
+
+      - name: Upload signed notarized provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: MACKAN-signed-notarized-provenance
+          path: ${{ env.MACKAN_PROVENANCE_PATH }}
+          if-no-files-found: error
+
+      - name: Upload signed notarized notary JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: MACKAN-signed-notarized-notary-json
+          path: ${{ env.MACKAN_NOTARY_JSON_PATH }}
+          if-no-files-found: error
+
+      - name: Upload signed notarized checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: MACKAN-signed-notarized-checksums
+          path: ${{ env.MACKAN_CHECKSUMS_PATH }}
+          if-no-files-found: error
+
+      - name: Upload signed notarized summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: MACKAN-signed-notarized-summary
+          path: ${{ env.MACKAN_RELEASE_SUMMARY_PATH }}
+          if-no-files-found: error
+
+      - name: Upload signed notarized release log
+        uses: actions/upload-artifact@v4
+        with:
+          name: MACKAN-signed-notarized-release-log
+          path: ${{ env.MACKAN_RELEASE_LOG_PATH }}
+          if-no-files-found: error
+
+      - name: Delete temporary signing keychain
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -n "${MACKAN_SIGNING_KEYCHAIN_PATH:-}" && -f "$MACKAN_SIGNING_KEYCHAIN_PATH" ]]; then
+            security delete-keychain "$MACKAN_SIGNING_KEYCHAIN_PATH"
+          fi

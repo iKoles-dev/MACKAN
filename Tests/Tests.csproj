@@ -90,6 +90,12 @@
       <Project>{4336F356-33DB-442A-BF74-5E89AF47A5B9}</Project>
       <Name>CKAN-NetKAN</Name>
     </ProjectReference>
+    <ProjectReference Include="..\MACKAN.Service\MACKAN.Service.csproj"
+                      Condition=" '$(BaseTargetFramework)' == 'net10.0' ">
+      <SetTargetFramework>TargetFramework=net10.0</SetTargetFramework>
+      <Project>{0A304AFE-1205-4641-826F-25534456EF40}</Project>
+      <Name>MACKAN.Service</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Content Include="log4net.xml" CopyToOutputDirectory="PreserveNewest" />

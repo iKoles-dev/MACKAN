@@ -155,7 +155,7 @@ namespace Tests.Core.Configuration
             switch (token)
             {
                 case string t:
-                    authTokens.Add(host, t);
+                    authTokens[host] = t;
                     break;
                 default:
                     authTokens.Remove(host);

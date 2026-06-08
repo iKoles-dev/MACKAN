@@ -360,6 +360,11 @@ namespace CKAN
         [ExcludeFromCodeCoverage]
         public void PlayGame(string command, Action? onExit = null)
         {
+            _ = PlayGameWithPid(command, onExit);
+        }
+
+        public int? PlayGameWithPid(string command, Action? onExit = null)
+        {
             if (Game.AdjustCommandLine(command.Split(' '), Version())
                 //is [string binary, ..] and string[] split
                 is string[] split
@@ -394,12 +399,15 @@ namespace CKAN
                     {
                         playTime?.Start();
                     }
+                    return p.Id;
                 }
                 catch (Exception exception)
                 {
                     User.RaiseError(Properties.Resources.GameInstancePlayGameFailed, exception.Message);
                 }
             }
+
+            return null;
         }
 
         public override string ToString()

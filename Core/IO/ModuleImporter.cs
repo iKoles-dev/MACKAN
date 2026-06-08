@@ -106,12 +106,13 @@ namespace CKAN.IO
 
                     // Update the progress string
                     description = $"{module} ({fi.Name})";
+                    var fileLength = fi.Length;
                     Cache.Store(module, fi.FullName, progress,
                                 // Move if user said we could delete and we don't need to make any more copies
                                 move: delete && toStore.Last(tuple => tuple.File == fi).Module == module,
                                 // Skip revalidation because we had to check the hashes to get here!
                                 validate: false);
-                    installedBytes += fi.Length;
+                    installedBytes += fileLength;
                 }
                 rateCounter.Stop();
             }

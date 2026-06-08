@@ -185,6 +185,7 @@ namespace CKAN
                 cancelToken?.ThrowIfCancellationRequested();
             }
             // If no exceptions, then everything is fine
+            var storedLength = new FileInfo(path).Length;
             var success = //module.download is [Uri url, ..]
                           module.download != null
                           && module.download.Count > 0
@@ -194,7 +195,7 @@ namespace CKAN
                                           move)
                             : "";
             // Make sure completion is signalled so progress bars go away
-            progress?.Report(new FileInfo(path).Length);
+            progress?.Report(storedLength);
             ModStored?.Invoke(module);
             return success;
         }

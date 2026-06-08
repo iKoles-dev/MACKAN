@@ -143,6 +143,79 @@ jobs:
           path: _build/osx/CKAN.dmg
           retention-days: 7
 
+  build-mackan:
+    name: Build and package native MACKAN on macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Restore NuGet package cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: mackan-nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            mackan-nuget-${{ runner.os }}-
+      - name: Run MACKAN release gate
+        run: macosx/MACKAN/scripts/release-check.sh --skip-launch
+
+      - name: Resolve MACKAN DMG metadata
+        run: |
+          DMG_PATH="$(ls -1t "$HOME/Library/Caches/MACKAN/build"/MACKAN-*-universal.dmg | head -n 1)"
+          if [[ -z "$DMG_PATH" ]]; then
+            echo "Universal DMG not found in ~/Library/Caches/MACKAN/build" >&2
+            ls -1 "$HOME/Library/Caches/MACKAN/build" >&2 || true
+            exit 1
+          fi
+          APP_PATH="$HOME/Library/Caches/MACKAN/build/MACKAN.app"
+          PROVENANCE_PATH="${DMG_PATH}.provenance.json"
+          if [[ ! -d "$APP_PATH" ]]; then
+            echo "MACKAN.app not found in ~/Library/Caches/MACKAN/build" >&2
+            ls -1 "$HOME/Library/Caches/MACKAN/build" >&2 || true
+            exit 1
+          fi
+          if [[ ! -f "$PROVENANCE_PATH" ]]; then
+            echo "MACKAN provenance manifest not found next to DMG: $PROVENANCE_PATH" >&2
+            ls -1 "$HOME/Library/Caches/MACKAN/build" >&2 || true
+            exit 1
+          fi
+          APP_VERSION="$(basename "$DMG_PATH" | sed -E 's/^MACKAN-(.+)-universal\.dmg$/\1/')"
+          if [[ ! "$APP_VERSION" =~ ^[0-9]+[.][0-9]+[.][0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "DMG filename must match MACKAN-<SemVer>-universal.dmg: $DMG_PATH" >&2
+            exit 1
+          fi
+          echo "MACKAN_DMG_PATH=$DMG_PATH" >> "$GITHUB_ENV"
+          echo "MACKAN_APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+          echo "MACKAN_PROVENANCE_PATH=$PROVENANCE_PATH" >> "$GITHUB_ENV"
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+
+      - name: Run MACKAN release-gate contract tests
+        run: APP_VERSION="$APP_VERSION" macosx/MACKAN/scripts/test-release-check.sh
+      - name: Verify MACKAN release artifact manifest
+        run: |
+          macosx/MACKAN/scripts/verify-release-artifact.sh \
+            --app "$MACKAN_APP_PATH" \
+            --dmg "$MACKAN_DMG_PATH" \
+            --provenance "$MACKAN_PROVENANCE_PATH" \
+            --require-version "$APP_VERSION"
+      - name: Run MACKAN DMG launch smoke
+        run: |
+          macosx/MACKAN/scripts/test-dmg-launch-smoke.sh --timeout 25 --require-version "$APP_VERSION" "$MACKAN_DMG_PATH"
+      - name: Run MACKAN DMG clean-install launch smoke
+        run: |
+          macosx/MACKAN/scripts/test-clean-install-smoke.sh --timeout 25 --require-version "$APP_VERSION" "$MACKAN_DMG_PATH"
+      - name: Upload MACKAN universal DMG artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: MACKAN-universal-dmg
+          path: ~/Library/Caches/MACKAN/build/MACKAN-*-universal.dmg
+          retention-days: 7
+      - name: Upload MACKAN provenance artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: MACKAN-universal-dmg-provenance
+          path: ~/Library/Caches/MACKAN/build/MACKAN-*-universal.dmg.provenance.json
+          retention-days: 7
+
   coveralls-finish:
     needs:
       - build-windows

@@ -1,75 +1,130 @@
-# The Comprehensive Kerbal Archive Network (CKAN)
+# MACKAN
 
-[<img src="https://img.shields.io/github/downloads/KSP-CKAN/CKAN/total.svg?label=%E2%A4%93Download&style=plastic" height="48px" style="height:48px;" />](https://github.com/KSP-CKAN/CKAN/releases/latest)
+MACKAN is a native macOS app for managing Kerbal Space Program mods with CKAN.
+It keeps CKAN Core as the source of truth for metadata, dependency resolution,
+downloads, installs, exports, registry locking, and compatibility decisions,
+while replacing the Terminal-launched macOS ConsoleUI path with a SwiftUI/AppKit
+desktop app.
 
-[![Coverage Status](https://coveralls.io/repos/github/KSP-CKAN/CKAN/badge.svg?branch=master)](https://coveralls.io/github/KSP-CKAN/CKAN?branch=master)
-[![NuGet Version](https://img.shields.io/nuget/v/CKAN?label=NuGet&style=plastic&logo=nuget)](https://www.nuget.org/packages/CKAN)
-[![Crowdin](https://img.shields.io/badge/Crowdin-2E3340.svg?plastic&logo=Crowdin&logoColor=white)](https://crowdin.com/project/ckan)
+![MACKAN app icon](assets/mackan.png)
 
+## Status
 
-[Click here to open a new CKAN issue][6]
+MACKAN is a public-preview fork direction, not an official CKAN release.
 
-[Click here to go to the CKAN wiki][5]
+- Native macOS UI: in active development.
+- CKAN Core compatibility: preserved through a .NET sidecar that calls CKAN Core
+  directly.
+- Local app bundle and DMG packaging: available for engineering checks.
+- Signed/notarized public DMG: not ready until Developer ID signing,
+  hardened runtime, notarization, stapling, checksums, and release provenance
+  gates are completed.
+- Upstream CKAN CLI/GUI/NetKAN code is still present because MACKAN is built on
+  top of the CKAN codebase.
 
-[Click here to view the CKAN metadata specification](Spec.md)
+## What Works
 
-## What's the CKAN?
+Current native MACKAN coverage includes:
 
-The CKAN is a metadata repository and associated tools to allow you to find, install, and manage mods for Kerbal Space Program.
-It provides strong assurances that mods are installed in the way prescribed by their metadata files,
-for the correct version of Kerbal Space Program, alongside their dependencies, and without any conflicting mods.
+- Instance management: add, clone, fake dev/test instances, rename, set default,
+  forget/remove, reveal in Finder, edit launch options, and launch.
+- Repository management: list, add, remove, reorder, refresh, canonical source
+  selection, progress, and recoverable download failures.
+- Catalog workflows: full module list, Windows-style smart filters, metadata
+  tags, scoped token search, saved searches, labels, persisted table columns,
+  multi-column sorting, auto-installed toggles, and native inspector tabs.
+- Change sets: install, remove, upgrade, replace, provider alternatives,
+  recommendations, conflicts, async apply/status/cancel, retry, and typed error
+  recovery.
+- File workflows: install local `.ckan` files, import manual downloads, export
+  mod lists, and export `.ckan` modpacks.
+- Maintenance and settings: unmanaged file scan/list, history, play time,
+  download statistics, cache cleanup, deduplication, registry repair,
+  compatibility, stability, preferred hosts, install filters, launch settings,
+  and auth tokens stored through macOS Keychain.
+- Diagnostics and packaging: sidecar health/version contracts, diagnostics
+  bundles, local app bundle generation, local DMG packaging, bundle verification,
+  launch smoke checks, and release-readiness scripts.
 
-CKAN is great for players _and_ for authors:
+The detailed parity status is tracked in
+[docs/mackan/parity-matrix.md](docs/mackan/parity-matrix.md).
 
-- players can find new content and install it with just a few clicks;
-- modders don't have to worry about misinstall problems or outdated versions;
+## Run Locally
 
-The CKAN has been inspired by the solid and proven metadata formats from both the Debian project and the CPAN, each of which manages tens of thousands of packages.
+Build and open a local development app bundle:
 
-## What's the status of the CKAN?
+```bash
+APP_PATH="$(macosx/MACKAN/scripts/build-dev-app.sh)"
+open "$APP_PATH"
+```
 
-The CKAN is currently under [active development][1].
-We very much welcome contributions, discussions, and especially pull-requests.
+Build a local universal DMG:
 
-## The CKAN spec
+```bash
+DMG_PATH="$(macosx/MACKAN/scripts/package-dmg.sh --universal)"
+open "$(dirname "$DMG_PATH")"
+```
 
-At the core of the CKAN is the **[metadata specification](Spec.md)**,
-which comes with a corresponding [JSON Schema](CKAN.schema) that you can also find in the [Schema Store][8]
+Run the non-credential release gate:
 
-This repository includes a validator that you can use to [validate your files][3].
+```bash
+macosx/MACKAN/scripts/release-check.sh --skip-launch
+```
 
-## CKAN for players
+Run a launch smoke check against the staged app:
 
-CKAN can download, install and update mods in just a few clicks. See the [User guide][2] to get started with CKAN.
+```bash
+macosx/MACKAN/scripts/verify-app-launch.sh --timeout 25 \
+    "$HOME/Library/Caches/MACKAN/build/MACKAN.app"
+```
 
-## CKAN for modders
+## Development Docs
 
-While anyone can contribute metadata for your mod, we believe that you know your mod best.
-So while contributors will endeavor to be as accurate as possible, we would appreciate any efforts made by mod authors to ensure our metadata's accuracy.
-If the metadata we have is incorrect please [open an issue][7] and let us know.
+Public-facing MACKAN planning and implementation docs:
 
-## Contributing to CKAN
+- [MACKAN overview](docs/mackan/README.md)
+- [Architecture](docs/mackan/architecture.md)
+- [Product spec](docs/mackan/product-spec.md)
+- [Parity matrix](docs/mackan/parity-matrix.md)
+- [Release roadmap](docs/mackan/release-roadmap.md)
+- [Release execution checklist](docs/mackan/release-execution-checklist.md)
 
-**No technical expertise is required to contribute to CKAN**
+Some older files under `docs/mackan` are implementation evidence or planning
+snapshots. They are useful for audits, but the documents above are the intended
+public entry points.
 
-If you want to contribute, please read our [CONTRIBUTING][4] file.
+## Relationship To CKAN
 
-## Thanks
+MACKAN is built from a fork of the
+[KSP-CKAN/CKAN](https://github.com/KSP-CKAN/CKAN) codebase.
+CKAN Core remains the compatibility and mod-management engine. MACKAN adds a
+native macOS application and sidecar contracts around that engine.
 
-Our sincere thanks to [SignPath.io][10] for allowing us to use their free code signing service, and to [the SignPath Foundation][11] for giving us a free code signing certificate!
+Useful upstream CKAN links:
 
----
+- [CKAN user guide](https://github.com/KSP-CKAN/CKAN/wiki/User-guide)
+- [CKAN metadata specification](Spec.md)
+- [CKAN wiki](https://github.com/KSP-CKAN/CKAN/wiki)
+- [CKAN issues](https://github.com/KSP-CKAN/CKAN/issues)
+- [NetKAN metadata issues](https://github.com/KSP-CKAN/NetKAN/issues)
 
-Note: Are you looking for the Open Data portal software called CKAN? If so, their GitHub repository is found [here][9].
+## Contributing
 
- [1]: https://github.com/KSP-CKAN/CKAN/commits/master
- [2]: https://github.com/KSP-CKAN/CKAN/wiki/User-guide
- [3]: https://github.com/KSP-CKAN/CKAN/wiki/Adding-a-mod-to-the-CKAN#verifying-metadata-files
- [4]: https://github.com/KSP-CKAN/.github/blob/master/CONTRIBUTING.md
- [5]: https://github.com/KSP-CKAN/CKAN/wiki
- [6]: https://github.com/KSP-CKAN/CKAN/issues/new
- [7]: https://github.com/KSP-CKAN/NetKAN/issues/new
- [8]: https://schemastore.org/
- [9]: https://github.com/ckan/ckan
- [10]: https://signpath.io/
- [11]: https://signpath.org/
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the current contribution model.
+
+For MACKAN work, keep changes inside the established boundary:
+
+- SwiftUI/AppKit owns the native UI, macOS integration, and presentation state.
+- `MACKAN.Service` owns JSON-RPC contracts that call CKAN Core.
+- CKAN Core remains the source of truth for mod metadata, dependency
+  resolution, registry mutation, downloads, installation, and exports.
+
+## Attribution
+
+CKAN is developed by the CKAN project and contributors. MACKAN is an
+independent fork direction for a native macOS UI and is not an official CKAN,
+Squad, Private Division, Take-Two, or Kerbal Space Program product.
+
+Kerbal Space Program and related marks belong to their respective owners.
+
+See [NOTICE.md](NOTICE.md) and [LICENSE.md](LICENSE.md).
