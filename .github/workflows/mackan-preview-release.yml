@@ -90,7 +90,7 @@ jobs:
           set -euo pipefail
 
           APP_PATH="$(APP_VERSION="$APP_VERSION" BUILD_ROOT="$BUILD_ROOT" macosx/MACKAN/scripts/build-dev-app.sh --universal)"
-          ZIP_PATH="$RUNNER_TEMP/MACKAN-${APP_VERSION}-macOS.app.zip"
+          ZIP_PATH="$RUNNER_TEMP/MACKAN-preview-macOS.app.zip"
           CHECKSUM_PATH="${ZIP_PATH}.sha256"
 
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_PATH"
@@ -171,6 +171,12 @@ jobs:
               --notes-file "${{ steps.notes.outputs.path }}" \
               --prerelease
           fi
+
+          gh release view "$PREVIEW_TAG" --json assets --jq '.assets[].name' \
+            | grep -E '^MACKAN-.*-macOS[.]app[.]zip([.]sha256)?$' \
+            | while read -r asset_name; do
+                gh release delete-asset "$PREVIEW_TAG" "$asset_name" --yes || true
+              done
 
           gh release upload "$PREVIEW_TAG" \
             "${{ steps.build-app.outputs.zip_path }}" \

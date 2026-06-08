@@ -55,7 +55,7 @@ The latest public preview app is published on GitHub Releases:
 
 - [Download MACKAN preview](https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview)
 
-Download `MACKAN-*-macOS.app.zip`, unzip it, and open `MACKAN.app`.
+Download `MACKAN-preview-macOS.app.zip`, unzip it, and open `MACKAN.app`.
 
 This preview archive is built by GitHub Actions for convenience. It is
 ad-hoc signed but not Developer ID signed or notarized yet, so macOS Gatekeeper
