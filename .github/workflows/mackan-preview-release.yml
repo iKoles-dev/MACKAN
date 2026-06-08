@@ -1,0 +1,168 @@
+name: Publish MACKAN preview app
+
+on:
+  push:
+    branches:
+      - mackan-native
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: Preview app version stamped into Info.plist
+        required: true
+        default: 0.1.0-preview
+      tag_name:
+        description: GitHub prerelease tag to create or update
+        required: true
+        default: mackan-preview
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mackan-preview-release
+  cancel-in-progress: false
+
+jobs:
+  preview-release:
+    name: Build and publish preview .app
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    env:
+      APP_NAME: MACKAN
+      APP_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.app_version || format('0.1.0-preview.{0}', github.run_number) }}
+      PREVIEW_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || 'mackan-preview' }}
+      BUILD_ROOT: ${{ runner.temp }}/mackan-preview-build
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore NuGet cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.sln') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Validate preview inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${APP_VERSION:-}" || ! "$APP_VERSION" =~ ^[0-9]+[.][0-9]+[.][0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "APP_VERSION must look like 0.1.0-preview or 0.1.0-preview.123." >&2
+            exit 1
+          fi
+
+          if [[ -z "${PREVIEW_TAG:-}" || ! "$PREVIEW_TAG" =~ ^[0-9A-Za-z._/-]+$ ]]; then
+            echo "PREVIEW_TAG must be a non-empty git tag-safe value." >&2
+            exit 1
+          fi
+
+      - name: Build universal preview app
+        id: build-app
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP_PATH="$(APP_VERSION="$APP_VERSION" BUILD_ROOT="$BUILD_ROOT" macosx/MACKAN/scripts/build-dev-app.sh --universal)"
+          ZIP_PATH="$RUNNER_TEMP/MACKAN-${APP_VERSION}-macOS.app.zip"
+          CHECKSUM_PATH="${ZIP_PATH}.sha256"
+
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_PATH"
+          shasum -a 256 "$ZIP_PATH" > "$CHECKSUM_PATH"
+
+          {
+            echo "app_path=$APP_PATH"
+            echo "zip_path=$ZIP_PATH"
+            echo "checksum_path=$CHECKSUM_PATH"
+            echo "zip_name=$(basename "$ZIP_PATH")"
+            echo "checksum_name=$(basename "$CHECKSUM_PATH")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Verify preview archive
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ZIP_PATH="${{ steps.build-app.outputs.zip_path }}"
+          EXPAND_DIR="$RUNNER_TEMP/mackan-preview-expand"
+          rm -rf "$EXPAND_DIR"
+          mkdir -p "$EXPAND_DIR"
+
+          ditto -x -k "$ZIP_PATH" "$EXPAND_DIR"
+          test -d "$EXPAND_DIR/MACKAN.app"
+          macosx/MACKAN/scripts/verify-app-bundle.sh \
+            --mode universal \
+            --require-icon \
+            --require-version "$APP_VERSION" \
+            "$EXPAND_DIR/MACKAN.app"
+
+      - name: Write release notes
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          NOTES_PATH="$RUNNER_TEMP/mackan-preview-release-notes.md"
+          cat > "$NOTES_PATH" <<NOTES
+          # MACKAN preview app
+
+          Download \`${{ steps.build-app.outputs.zip_name }}\`, unzip it, and open \`MACKAN.app\`.
+
+          This is an unsigned/ad-hoc signed public preview build from branch \`${GITHUB_REF_NAME}\`.
+          It is intended for trying the native macOS UI without building from Terminal.
+
+          macOS Gatekeeper may still warn because this preview is not Developer ID signed or notarized yet.
+          If macOS blocks a normal double-click, use Finder right-click -> Open.
+
+          Build:
+
+          - Commit: \`${GITHUB_SHA}\`
+          - Version: \`${APP_VERSION}\`
+          - Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+          A signed and notarized DMG will be published separately after the release signing gates are complete.
+          NOTES
+
+          echo "path=$NOTES_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Update preview release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git tag -f "$PREVIEW_TAG" "$GITHUB_SHA"
+          git push --force origin "refs/tags/$PREVIEW_TAG"
+
+          if gh release view "$PREVIEW_TAG" >/dev/null 2>&1; then
+            gh release edit "$PREVIEW_TAG" \
+              --title "MACKAN Preview" \
+              --notes-file "${{ steps.notes.outputs.path }}" \
+              --prerelease
+          else
+            gh release create "$PREVIEW_TAG" \
+              --target "$GITHUB_SHA" \
+              --title "MACKAN Preview" \
+              --notes-file "${{ steps.notes.outputs.path }}" \
+              --prerelease
+          fi
+
+          gh release upload "$PREVIEW_TAG" \
+            "${{ steps.build-app.outputs.zip_path }}" \
+            "${{ steps.build-app.outputs.checksum_path }}" \
+            --clobber
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MACKAN-preview-macOS-app
+          path: |
+            ${{ steps.build-app.outputs.zip_path }}
+            ${{ steps.build-app.outputs.checksum_path }}
+          if-no-files-found: error

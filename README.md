@@ -49,6 +49,19 @@ Current native MACKAN coverage includes:
 The detailed parity status is tracked in
 [docs/mackan/parity-matrix.md](docs/mackan/parity-matrix.md).
 
+## Download Preview App
+
+The latest public preview app is published on GitHub Releases:
+
+- [Download MACKAN preview](https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview)
+
+Download `MACKAN-*-macOS.app.zip`, unzip it, and open `MACKAN.app`.
+
+This preview archive is built by GitHub Actions for convenience. It is
+ad-hoc signed but not Developer ID signed or notarized yet, so macOS Gatekeeper
+may still show a warning. If a normal double-click is blocked, use Finder
+right-click -> Open. A signed and notarized DMG remains a separate release gate.
+
 ## Run Locally
 
 Build and open a local development app bundle:
