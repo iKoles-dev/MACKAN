@@ -9,11 +9,11 @@ on:
       app_version:
         description: Preview app version stamped into Info.plist
         required: true
-        default: 0.1.0-preview
+        default: "0.1.0-preview"
       tag_name:
         description: GitHub prerelease tag to create or update
         required: true
-        default: mackan-preview
+        default: "mackan-preview"
 
 permissions:
   contents: write
@@ -30,7 +30,6 @@ jobs:
 
     env:
       APP_NAME: MACKAN
-      BUILD_ROOT: ${{ runner.temp }}/mackan-preview-build
       GH_TOKEN: ${{ github.token }}
 
     steps:
@@ -66,6 +65,7 @@ jobs:
           {
             echo "APP_VERSION=$APP_VERSION"
             echo "PREVIEW_TAG=$PREVIEW_TAG"
+            echo "BUILD_ROOT=$RUNNER_TEMP/mackan-preview-build"
           } >> "$GITHUB_ENV"
 
       - name: Validate preview inputs
