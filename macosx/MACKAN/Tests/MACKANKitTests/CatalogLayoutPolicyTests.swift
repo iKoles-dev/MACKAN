@@ -42,4 +42,15 @@ final class CatalogLayoutPolicyTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(compact.width(for: .name), 260)
         XCTAssertLessThanOrEqual(compact.width(for: .status), 72)
     }
+
+    func testRowMetricsAreStableAcrossBreakpoints() {
+        XCTAssertEqual(CatalogLayoutPolicy.rowHeight(forWidth: 760), 30)
+        XCTAssertEqual(CatalogLayoutPolicy.rowHeight(forWidth: 1120), 30)
+        XCTAssertEqual(CatalogLayoutPolicy.rowHeight(forWidth: 1440), 28)
+    }
+
+    func testStatusColumnUsesCompactWidthInSmallWindows() {
+        XCTAssertEqual(CatalogLayoutPolicy.responsiveWidth(for: .status, viewportWidth: 760), 72)
+        XCTAssertEqual(CatalogLayoutPolicy.responsiveWidth(for: .status, viewportWidth: 1360), 86)
+    }
 }

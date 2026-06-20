@@ -82,4 +82,8 @@ public enum CatalogLayoutPolicy {
     public static func defaultWidth(for column: ModuleTableColumn) -> CGFloat {
         responsiveWidth(for: column, viewportWidth: 1360)
     }
+
+    public static func rowHeight(forWidth width: CGFloat) -> CGFloat {
+        width >= 1400 ? 28 : 30
+    }
 }
