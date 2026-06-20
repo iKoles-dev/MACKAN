@@ -30,6 +30,8 @@ write_valid_evidence() {
   "appPath": "/Applications/MACKAN.app",
   "capturedAtUtc": "2026-06-01T12:00:00Z",
   "launchPid": 4242,
+  "windowCaptureMode": "target-window",
+  "windowExecutable": "MACKAN",
   "screenshots": {
     "main": "main-window.png",
     "adaptiveMinimum": {
@@ -108,6 +110,16 @@ SUCCESS_OUTPUT="$("$VERIFY_SCRIPT" "$VALID_DIR")"
     exit 1
 }
 
+CAPTURE_ONLY_DIR="$WORK_DIR/capture-only"
+write_valid_evidence "$CAPTURE_ONLY_DIR"
+perl -0pi -e 's/- \[x\] Catalog:/- [ ] Catalog:/; s/- \[x\] No blocking defects found/- [ ] No blocking defects found/' "$CAPTURE_ONLY_DIR/ui-ux-audit.md"
+CAPTURE_ONLY_OUTPUT="$("$VERIFY_SCRIPT" --capture-only "$CAPTURE_ONLY_DIR")"
+[[ "$CAPTURE_ONLY_OUTPUT" == *"UI/UX audit capture evidence verified:"* ]] || {
+    echo "Expected capture-only verifier success output." >&2
+    echo "$CAPTURE_ONLY_OUTPUT" >&2
+    exit 1
+}
+
 MISSING_SCREENSHOT_DIR="$WORK_DIR/missing-screenshot"
 write_valid_evidence "$MISSING_SCREENSHOT_DIR"
 rm "$MISSING_SCREENSHOT_DIR/main-window.png"
@@ -127,6 +139,16 @@ MISMATCHED_METADATA_TIMESTAMP_DIR="$WORK_DIR/mismatched-metadata-timestamp"
 write_valid_evidence "$MISMATCHED_METADATA_TIMESTAMP_DIR"
 perl -0pi -e 's/2026-06-01T12:00:00Z/2026-06-01T12:05:00Z/' "$MISMATCHED_METADATA_TIMESTAMP_DIR/audit-metadata.json"
 assert_fails_with "UI/UX audit metadata capturedAtUtc does not match checklist timestamp" "$VERIFY_SCRIPT" "$MISMATCHED_METADATA_TIMESTAMP_DIR"
+
+WRONG_CAPTURE_MODE_DIR="$WORK_DIR/wrong-capture-mode"
+write_valid_evidence "$WRONG_CAPTURE_MODE_DIR"
+perl -0pi -e 's/"windowCaptureMode": "target-window"/"windowCaptureMode": "full-desktop"/' "$WRONG_CAPTURE_MODE_DIR/audit-metadata.json"
+assert_fails_with "UI/UX audit metadata windowCaptureMode must be target-window" "$VERIFY_SCRIPT" "$WRONG_CAPTURE_MODE_DIR"
+
+WRONG_WINDOW_EXECUTABLE_DIR="$WORK_DIR/wrong-window-executable"
+write_valid_evidence "$WRONG_WINDOW_EXECUTABLE_DIR"
+perl -0pi -e 's/"windowExecutable": "MACKAN"/"windowExecutable": "Other"/' "$WRONG_WINDOW_EXECUTABLE_DIR/audit-metadata.json"
+assert_fails_with "UI/UX audit metadata windowExecutable must be MACKAN" "$VERIFY_SCRIPT" "$WRONG_WINDOW_EXECUTABLE_DIR"
 
 MISMATCHED_CHECKLIST_SCREENSHOT_DIR="$WORK_DIR/mismatched-checklist-screenshot"
 write_valid_evidence "$MISMATCHED_CHECKLIST_SCREENSHOT_DIR"

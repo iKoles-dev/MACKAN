@@ -16,6 +16,7 @@ OUTPUT_DIR="${MACKAN_UI_AUDIT_OUTPUT_DIR:-}"
 AUDIT_EXECUTABLE_NAME=""
 AUDIT_APP_PID=""
 CATALOG_READY_MODE="not-waited"
+SELF_TEST_WINDOW_RECT=0
 
 usage() {
     cat <<USAGE
@@ -30,6 +31,9 @@ USAGE
 
 fail() {
     echo "$1" >&2
+    if [[ -n "$OUTPUT_DIR" && -d "$OUTPUT_DIR" ]]; then
+        printf '%s\n' "$1" >> "$OUTPUT_DIR/audit-error.log" 2>/dev/null || true
+    fi
     exit 1
 }
 
@@ -127,10 +131,57 @@ OSA
     fi
 }
 
-capture_screenshot() {
+normalize_window_rect() {
+    printf '%s' "$1" \
+        | sed 's/, */,/g; s/ *,/,/g; s/[^0-9,]//g; s/,,*/,/g; s/^,//; s/,$//'
+}
+
+window_rect() {
+    local executable_name="$1"
+
+    if [[ -n "${MACKAN_UI_AUDIT_WINDOW_RECT_OUTPUT+x}" ]]; then
+        normalize_window_rect "$MACKAN_UI_AUDIT_WINDOW_RECT_OUTPUT"
+        return 0
+    fi
+
+    osascript <<OSA 2>/dev/null | tail -n 1 | while IFS= read -r rect; do normalize_window_rect "$rect"; done
+tell application "System Events"
+    if not (exists process "$executable_name") then error "MACKAN process is not running."
+    tell process "$executable_name"
+        if (count windows) is 0 then error "MACKAN has no windows."
+        set p to position of window 1
+        set s to size of window 1
+        set x to (item 1 of p) as integer
+        set y to (item 2 of p) as integer
+        set w to (item 1 of s) as integer
+        set h to (item 2 of s) as integer
+        return (x as string) & "," & (y as string) & "," & (w as string) & "," & (h as string)
+    end tell
+end tell
+OSA
+}
+
+validate_target_window_screenshot() {
     local output_path="$1"
-    "$SCREENSHOT_TOOL" -x "$output_path"
-    [[ -s "$output_path" ]] || fail "Cannot run real-app UI/UX audit because screenshot capture did not produce an image: $output_path"
+
+    if [[ -n "${MACKAN_UI_AUDIT_TARGET_WINDOW_MARKER+x}" ]]; then
+        grep -F "$MACKAN_UI_AUDIT_TARGET_WINDOW_MARKER" "$output_path" >/dev/null 2>&1 \
+            || fail "Cannot run real-app UI/UX audit because screenshot did not match the MACKAN target window: $output_path"
+    fi
+}
+
+capture_window_screenshot() {
+    local executable_name="$1"
+    local output_path="$2"
+    local rect
+
+    rect="$(window_rect "$executable_name")"
+    [[ "$rect" =~ ^[0-9]+,[0-9]+,[0-9]+,[0-9]+$ ]] \
+        || fail "Cannot capture MACKAN window because window rect is invalid: $rect"
+    "$SCREENSHOT_TOOL" -x -R"$rect" "$output_path"
+    [[ -s "$output_path" ]] \
+        || fail "Cannot run real-app UI/UX audit because screenshot capture did not produce an image: $output_path"
+    validate_target_window_screenshot "$output_path"
 }
 
 settle_before_capture() {
@@ -253,6 +304,10 @@ while [[ $# -gt 0 ]]; do
             CATALOG_READY_TIMEOUT_SECONDS="$2"
             shift 2
             ;;
+        --self-test-window-rect)
+            SELF_TEST_WINDOW_RECT=1
+            shift
+            ;;
         --help|-h)
             usage
             exit 0
@@ -277,6 +332,11 @@ done
 [[ "$TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || fail "--timeout must be a positive integer."
 [[ "$TIMEOUT_SECONDS" -gt 0 ]] || fail "--timeout must be greater than zero."
 [[ "$CATALOG_READY_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || fail "--wait-catalog must be a non-negative integer."
+
+if [[ "$SELF_TEST_WINDOW_RECT" == "1" ]]; then
+    window_rect "MACKAN"
+    exit 0
+fi
 
 if [[ -z "$APP_PATH" ]]; then
     usage >&2
@@ -331,22 +391,24 @@ AUDIT_APP_PID="$(sed -nE 's/.*\(pid ([0-9]+),.*/\1/p' "$launch_log" | head -n 1)
 [[ -n "$AUDIT_APP_PID" ]] || fail "Cannot run real-app UI/UX audit because launch evidence did not include a MACKAN PID: $launch_log"
 wait_for_catalog_ready "$executable_name"
 settle_before_capture
-capture_screenshot "$screenshot_path"
+capture_window_screenshot "$executable_name" "$screenshot_path"
 set_window_bounds "$executable_name" 760 620
 settle_before_capture
-capture_screenshot "$adaptive_minimum_path"
+capture_window_screenshot "$executable_name" "$adaptive_minimum_path"
 set_window_bounds "$executable_name" 1000 700
 settle_before_capture
-capture_screenshot "$adaptive_medium_path"
+capture_window_screenshot "$executable_name" "$adaptive_medium_path"
 set_window_bounds "$executable_name" 1280 820
 settle_before_capture
-capture_screenshot "$adaptive_wide_path"
+capture_window_screenshot "$executable_name" "$adaptive_wide_path"
 cat > "$metadata_path" <<EOF
 {
   "schemaVersion": 1,
   "appPath": "$(json_escape "$APP_PATH")",
   "capturedAtUtc": "$captured_at_utc",
   "launchPid": $AUDIT_APP_PID,
+  "windowCaptureMode": "target-window",
+  "windowExecutable": "$(json_escape "$executable_name")",
   "catalogReadyWaitSeconds": $CATALOG_READY_TIMEOUT_SECONDS,
   "catalogReadyMode": "$CATALOG_READY_MODE",
   "screenshots": {

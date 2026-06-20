@@ -9,6 +9,8 @@ APP_DIR="$WORK_DIR/MACKAN.app"
 OUTPUT_DIR="$WORK_DIR/evidence"
 ERROR_LOG="$WORK_DIR/error.log"
 export MACKAN_UI_AUDIT_CATALOG_READY_TIMEOUT_SECONDS=0
+export MACKAN_UI_AUDIT_WINDOW_RECT_OUTPUT="80,80,760,620"
+export MACKAN_UI_AUDIT_TARGET_WINDOW_MARKER="fake screenshot"
 
 cleanup() {
     rm -rf "$WORK_DIR"
@@ -43,6 +45,15 @@ if [[ "$AUDIT_SCRIPT_CONTENTS" != *"--wait-catalog"* ]]; then
     echo "Expected audit runner to expose a catalog-ready wait option for public-RC screenshots." >&2
     exit 1
 fi
+RECT_SELF_TEST_OUTPUT="$(
+    MACKAN_UI_AUDIT_WINDOW_RECT_OUTPUT='80, ,, 80, ,, 760, ,, 672' \
+    "$AUDIT_SCRIPT" --self-test-window-rect
+)"
+[[ "$RECT_SELF_TEST_OUTPUT" == "80,80,760,672" ]] || {
+    echo "Expected audit runner to normalize AppleScript window rect output." >&2
+    echo "$RECT_SELF_TEST_OUTPUT" >&2
+    exit 1
+}
 
 if MACKAN_UI_AUDIT_CONSOLE_LOCKED_OUTPUT=Yes \
     "$AUDIT_SCRIPT" --output "$OUTPUT_DIR" "$APP_DIR" 2>"$ERROR_LOG"; then
@@ -79,6 +90,13 @@ cat > "$FAKE_SCREENSHOT" <<'SH'
 printf 'fake screenshot\n' > "${@: -1}"
 SH
 chmod +x "$FAKE_SCREENSHOT"
+
+FAKE_FULL_DESKTOP_SCREENSHOT="$WORK_DIR/full-desktop-screencapture"
+cat > "$FAKE_FULL_DESKTOP_SCREENSHOT" <<'SH'
+#!/usr/bin/env bash
+printf 'full desktop screenshot\n' > "${@: -1}"
+SH
+chmod +x "$FAKE_FULL_DESKTOP_SCREENSHOT"
 
 FAKE_WINDOW_BOUNDS="$WORK_DIR/set-window-bounds"
 cat > "$FAKE_WINDOW_BOUNDS" <<'SH'
@@ -168,6 +186,8 @@ grep -F "$APP_DIR" "$OUTPUT_DIR/ui-ux-audit.md" >/dev/null
 grep -F '"schemaVersion": 1' "$OUTPUT_DIR/audit-metadata.json" >/dev/null
 grep -F "\"appPath\": \"$APP_DIR\"" "$OUTPUT_DIR/audit-metadata.json" >/dev/null
 grep -F '"launchPid": 4242' "$OUTPUT_DIR/audit-metadata.json" >/dev/null
+grep -F '"windowCaptureMode": "target-window"' "$OUTPUT_DIR/audit-metadata.json" >/dev/null
+grep -F '"windowExecutable": "MACKAN"' "$OUTPUT_DIR/audit-metadata.json" >/dev/null
 grep -F '"capturedAtUtc": "' "$OUTPUT_DIR/audit-metadata.json" >/dev/null
 grep -F '"width": 760' "$OUTPUT_DIR/audit-metadata.json" >/dev/null
 grep -F '"height": 620' "$OUTPUT_DIR/audit-metadata.json" >/dev/null
@@ -193,6 +213,24 @@ grep -F "MACKAN 1280 820" "$WINDOW_BOUNDS_LOG" >/dev/null
     exit 1
 }
 grep -F "MACKAN 4242" "$QUIT_LOG" >/dev/null
+
+TARGET_MISMATCH_OUTPUT="$WORK_DIR/target-mismatch-evidence"
+TARGET_MISMATCH_LOG="$WORK_DIR/target-mismatch.err"
+if MACKAN_UI_AUDIT_CONSOLE_LOCKED_OUTPUT=No \
+    MACKAN_UI_AUDIT_VERIFY_LAUNCH_SCRIPT="$FAKE_VERIFY" \
+    MACKAN_UI_AUDIT_SCREENSHOT_TOOL="$FAKE_FULL_DESKTOP_SCREENSHOT" \
+    MACKAN_UI_AUDIT_WINDOW_BOUNDS_TOOL="$FAKE_WINDOW_BOUNDS" \
+    MACKAN_UI_AUDIT_WINDOW_BOUNDS_LOG="$WINDOW_BOUNDS_LOG" \
+    MACKAN_UI_AUDIT_QUIT_TOOL="$FAKE_QUIT" \
+    MACKAN_UI_AUDIT_QUIT_LOG="$QUIT_LOG" \
+    MACKAN_UI_AUDIT_WINDOW_SUMMARY_OUTPUT="MACKAN window count: 1" \
+    "$AUDIT_SCRIPT" --output "$TARGET_MISMATCH_OUTPUT" --timeout 1 "$APP_DIR" \
+    2>"$TARGET_MISMATCH_LOG"; then
+    echo "Expected UI/UX audit runner to fail when screenshot does not match target window evidence." >&2
+    exit 1
+fi
+grep -F "screenshot did not match the MACKAN target window" "$TARGET_MISMATCH_LOG" >/dev/null
+grep -F "screenshot did not match the MACKAN target window" "$TARGET_MISMATCH_OUTPUT/audit-error.log" >/dev/null
 
 MISSING_PID_OUTPUT="$WORK_DIR/missing-pid-evidence"
 MISSING_PID_LOG="$WORK_DIR/missing-pid.err"

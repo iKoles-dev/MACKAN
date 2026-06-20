@@ -2,15 +2,20 @@
 set -euo pipefail
 
 EVIDENCE_DIR=""
+CAPTURE_ONLY=0
 
 usage() {
     cat <<USAGE
-Usage: verify-ui-ux-audit-evidence.sh EVIDENCE_DIR
+Usage: verify-ui-ux-audit-evidence.sh [--capture-only] EVIDENCE_DIR
 
 Verifies a completed MACKAN real-app UI/UX audit evidence bundle. This is the
 post-audit gate: run-ui-ux-audit.sh creates the bundle, then the visual audit
 operator checks every mandatory item and this verifier rejects incomplete or
 blocking-defect evidence.
+
+Use --capture-only to verify screenshot, window, and metadata integrity before
+the manual UI checklist has been completed. The default mode remains the full
+post-audit gate.
 USAGE
 }
 
@@ -35,8 +40,22 @@ json_value() {
     /usr/bin/plutil -extract "$key_path" raw -o - "$json_path" 2>/dev/null || true
 }
 
+require_json_value() {
+    local key_path="$1"
+    local expected="$2"
+    local actual
+    actual="$(json_value "$metadata_path" "$key_path")"
+    if [[ "$actual" != "$expected" ]]; then
+        fail "UI/UX audit metadata $key_path must be $expected: $metadata_path"
+    fi
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --capture-only)
+            CAPTURE_ONLY=1
+            shift
+            ;;
         --help|-h)
             usage
             exit 0
@@ -135,6 +154,9 @@ if ! grep -F -- "- App: \`$metadata_app_path\`" "$checklist_path" >/dev/null; th
     fail "UI/UX audit metadata appPath does not match checklist app: $metadata_path"
 fi
 
+require_json_value "windowCaptureMode" "target-window"
+require_json_value "windowExecutable" "MACKAN"
+
 main_screenshot_name="$(json_value "$metadata_path" "screenshots.main")"
 minimum_screenshot_name="$(json_value "$metadata_path" "screenshots.adaptiveMinimum.path")"
 medium_screenshot_name="$(json_value "$metadata_path" "screenshots.adaptiveMedium.path")"
@@ -174,6 +196,11 @@ if [[ -z "$window_pid" ]]; then
 fi
 if [[ "$window_pid" != "$launch_pid" ]]; then
     fail "Window summary PID does not match launch PID: $window_summary_path"
+fi
+
+if [[ "$CAPTURE_ONLY" == "1" ]]; then
+    echo "UI/UX audit capture evidence verified: $EVIDENCE_DIR"
+    exit 0
 fi
 
 awk '
