@@ -169,310 +169,15 @@ struct MainWindowView: View {
                 onLaunch: launchSelectedGame,
                 onOpenFolder: openSelectedGameFolder)
         }
-        .sheet(isPresented: operationSheetIsPresented(.changePreview)) {
-            ChangeSetPreviewSheet(
-                result: model.pendingChangeSet,
-                conflictNotice: model.pendingChangeSetConflictNotice,
-                dependencyChoiceNotice: model.pendingDependencyChoiceNotice,
-                errorMessage: model.changeSetError,
-                errorDetails: model.changeSetErrorDetails,
-                isApplying: operationFlow.isActive(.applyingChanges),
-                suppressRecommendations: model.pendingChangeSet?.suppressRecommendations
-                    ?? model.recommendationSettings?.suppressRecommendations
-                    ?? false,
-                onClose: {
-                    operationFlow.dismiss(.changePreview)
-                },
-                onClear: {
-                    model.clearAllStagedChanges()
-                    operationFlow.dismiss(.changePreview)
-                },
-                onStageProvider: { choice, option in
-                    model.stageProviderOption(choice: choice, option: option)
-                    previewChanges()
-                },
-                onStageRecommendation: { identifier in
-                    model.stageRecommendationChoice(identifier)
-                },
-                onToggleSuppressRecommendations: { suppressRecommendations in
-                    updateSuppressRecommendations(suppressRecommendations)
-                },
-                onRetry: {
-                    previewChanges()
-                },
-                onRemoveLock: {
-                    beginRegistryLockRemoval(details: model.changeSetErrorDetails, followUp: .preview)
-                },
-                onApply: {
-                    applyChanges()
-                })
-        }
-        .sheet(isPresented: operationSheetIsPresented(.operationResult)) {
-            OperationResultSheet(
-                result: model.lastOperationResult,
-                errorMessage: model.operationError,
-                errorDetails: model.operationErrorDetails,
-                canSkipDownloadFailuresRetry: model.lastOperationSupportsSkipDownloadFailures,
-                isRefreshing: operationFlow.isActive(.refreshingOperationStatus),
-                isCancelling: operationFlow.isActive(.cancellingOperation),
-                onRefresh: {
-                    refreshOperationStatus()
-                },
-                onRetry: {
-                    retryLastOperation()
-                },
-                onSkipDownloadFailuresRetry: {
-                    retryLastOperation(skipDownloadFailures: true)
-                },
-                onRemoveLock: {
-                    beginRegistryLockRemoval(details: model.operationErrorDetails, followUp: .apply)
-                },
-                onStageProvider: { choice, option in
-                    selectCkanProvider(choice: choice, option: option)
-                },
-                onStageRecommendation: { choice in
-                    selectCkanRecommendation(choice)
-                },
-                onSkipRecommendations: {
-                    skipCkanRecommendations()
-                },
-                onAllowIncompatibleCkanFiles: {
-                    allowIncompatibleCkanFiles()
-                },
-                onCopyDiagnostics: onCopyDiagnostics,
-                onCancel: {
-                    cancelOperation()
-                },
-                onClose: {
-                    operationFlow.dismiss(.operationResult)
-                })
-        }
-        .sheet(isPresented: $fileImports.isShowingImportDownloadsOptions) {
-            ImportDownloadsOptionsSheet(
-                fileCount: fileImports.pendingImportDownloadURLs.count,
-                installImportedModules: $fileImports.importDownloadsDraft.installImportedModules,
-                deleteImportedFiles: $fileImports.importDownloadsDraft.deleteImportedFiles,
-                previewBeforeInstall: $fileImports.importDownloadsDraft.previewBeforeInstall,
-                onCancel: {
-                    fileImports.cancelImportDownloadsOptions()
-                },
-                onImport: {
-                    let request = fileImports.confirmImportDownloadsOptions()
-                    importDownloads(request.urls, options: request.options)
-                })
-        }
-        .sheet(isPresented: pendingLaunchWarningIsPresented) {
-            if let warning = model.pendingLaunchWarning {
-                LaunchWarningSheet(
-                    warning: warning,
-                    isLaunching: model.isLaunchingGame,
-                    onCancel: {
-                        model.cancelPendingLaunchWarning()
-                    },
-                    onLaunch: { suppressFutureWarnings in
-                        confirmLaunchWarning(suppressFutureWarnings: suppressFutureWarnings)
-                    })
-            }
-        }
-        .sheet(isPresented: maintenanceSheetIsPresented(for: .unmanagedFiles)) {
-            UnmanagedFilesSheet(
-                result: model.unmanagedFilesResult,
-                onRevealFile: revealUnmanagedFile,
-                onClose: {
-                    model.clearMaintenanceResult(for: .unmanagedFiles)
-                })
-        }
-        .sheet(isPresented: maintenanceSheetIsPresented(for: .history)) {
-            InstallationHistorySheet(
-                result: model.installationHistoryResult,
-                onInstallMissing: { modules in
-                    installHistoryModules(modules)
-                },
-                onRestoreExactVersions: { modules in
-                    installHistoryModules(modules, exactVersions: true)
-                },
-                onClose: {
-                    model.clearMaintenanceResult(for: .history)
-                })
-        }
-        .sheet(isPresented: maintenanceSheetIsPresented(for: .playTime)) {
-            PlayTimeSheet(
-                result: model.playTimeResult,
-                onSave: { instanceId, hours in
-                    await updatePlayTime(instanceId: instanceId, hours: hours)
-                },
-                onClose: {
-                    model.clearMaintenanceResult(for: .playTime)
-                })
-        }
-        .sheet(isPresented: maintenanceSheetIsPresented(for: .downloadStatistics)) {
-            DownloadStatisticsSheet(
-                result: model.downloadStatisticsResult,
-                onClose: {
-                    model.clearMaintenanceResult(for: .downloadStatistics)
-                })
-        }
-        .sheet(isPresented: maintenanceSheetIsPresented(for: .cache)) {
-            CacheMaintenanceSheet(
-                info: model.cacheInfoResult,
-                purgeResult: model.lastCachePurgeResult,
-                onRefresh: {
-                    await loadCacheInfo()
-                },
-                onPurgeToLimit: {
-                    await purgeCacheToLimit()
-                },
-                onPurgeAll: {
-                    await clearCache()
-                },
-                onClose: {
-                    model.clearMaintenanceResult(for: .cache)
-                })
-        }
-        .sheet(isPresented: deduplicateResultIsPresented) {
-            DeduplicateResultSheet(
-                result: model.lastDeduplicateResult,
-                onClose: {
-                    model.clearDeduplicateResult()
-                })
-        }
-        .sheet(isPresented: repairRegistryResultIsPresented) {
-            RepairRegistryResultSheet(
-                result: model.lastRepairRegistryResult,
-                onClose: {
-                    model.clearRepairRegistryResult()
-                })
-        }
-        .alert("GameData scan complete", isPresented: maintenanceScanResultIsPresented) {
-            Button("OK", role: .cancel) {
-                model.clearMaintenanceScanResult()
-            }
-        } message: {
-            Text(maintenanceScanSummary)
-        }
-        .alert("GameData scan failed", isPresented: maintenanceErrorIsPresented) {
-            Button("OK", role: .cancel) {
-                model.clearMaintenanceError()
-            }
-        } message: {
-            Text(model.maintenanceError ?? "")
-        }
-        .alert(
-            "Remove Registry Lock File?",
-            isPresented: registryLockRemovalIsPresented,
-            presenting: operationFlow.pendingRegistryLockRemoval
-        ) { request in
-            Button("Remove Lock File", role: .destructive) {
-                removeRegistryLockAndRetry(request)
-            }
-            Button("Cancel", role: .cancel) {
-                operationFlow.clearRegistryLockRemoval()
-            }
-        } message: { request in
-            Text("Only remove this file if CKAN and MACKAN are not currently working on this instance.\n\n\(request.lockfilePath ?? "The lock file path is unavailable.")")
-        }
-        .alert(
-            "Failed to launch game",
-            isPresented: launchErrorIsPresented,
-            presenting: model.launchError
-        ) { _ in
-            if launchErrorCanRetry {
-                Button("Retry Launch") {
-                    retryLaunchFromFailure()
-                }
-            }
-            Button("OK", role: .cancel) {
-                model.clearLaunchError()
-            }
-        } message: { message in
-            Text(launchErrorMessageText(message))
-        }
-    }
-
-    private func operationSheetIsPresented(_ sheet: OperationPresentationSheet) -> Binding<Bool> {
-        Binding {
-            operationFlow.isPresenting(sheet)
-        } set: { isPresented in
-            if isPresented {
-                operationFlow.present(sheet)
-            } else {
-                operationFlow.dismiss(sheet)
-            }
-        }
-    }
-
-    private func maintenanceSheetIsPresented(for pane: MaintenancePane) -> Binding<Bool> {
-        Binding {
-            model.shouldPresentMaintenanceSheet(for: pane)
-        } set: { isPresented in
-            if !isPresented {
-                model.clearMaintenanceResult(for: pane)
-            }
-        }
+        .modifier(MainWindowSheets(
+            model: model,
+            fileImports: $fileImports,
+            operationFlow: $operationFlow,
+            actions: sheetActions))
     }
 
     private var repositoryRefreshPollingID: String {
         "\(model.repositoryRefreshSummary?.operationId ?? "-"):\(model.repositoryRefreshSummary?.operationStatus ?? "-")"
-    }
-
-    private var deduplicateResultIsPresented: Binding<Bool> {
-        Binding {
-            model.lastDeduplicateResult != nil
-        } set: { isPresented in
-            if !isPresented {
-                model.clearDeduplicateResult()
-            }
-        }
-    }
-
-    private var repairRegistryResultIsPresented: Binding<Bool> {
-        Binding {
-            model.lastRepairRegistryResult != nil
-        } set: { isPresented in
-            if !isPresented {
-                model.clearRepairRegistryResult()
-            }
-        }
-    }
-
-    private var maintenanceScanResultIsPresented: Binding<Bool> {
-        Binding {
-            model.lastMaintenanceScanResult != nil
-        } set: { isPresented in
-            if !isPresented {
-                model.clearMaintenanceScanResult()
-            }
-        }
-    }
-
-    private var maintenanceErrorIsPresented: Binding<Bool> {
-        Binding {
-            model.maintenanceError != nil
-        } set: { isPresented in
-            if !isPresented {
-                model.clearMaintenanceError()
-            }
-        }
-    }
-
-    private var registryLockRemovalIsPresented: Binding<Bool> {
-        Binding {
-            operationFlow.pendingRegistryLockRemoval != nil
-        } set: { isPresented in
-            if !isPresented {
-                operationFlow.clearRegistryLockRemoval()
-            }
-        }
-    }
-
-    private var maintenanceScanSummary: String {
-        guard let result = model.lastMaintenanceScanResult else {
-            return ""
-        }
-        let changeText = result.changed
-            ? "Detected changes in manually installed modules or DLC."
-            : "No registry changes were detected."
-        return "\(changeText)\nDLLs: \(result.detectedDllCount.formatted())\nDLC: \(result.detectedDlcCount.formatted())"
     }
 
     private func presentCkanFileOpenPanel() {
@@ -645,6 +350,53 @@ struct MainWindowView: View {
             isLaunchingGame: model.isLaunchingGame)
     }
 
+    private var sheetActions: MainWindowSheetActions {
+        MainWindowSheetActions(
+            clearChanges: {
+                model.clearAllStagedChanges()
+                operationFlow.dismiss(.changePreview)
+            },
+            stageProvider: { choice, option in
+                model.stageProviderOption(choice: choice, option: option)
+                previewChanges()
+            },
+            stageRecommendation: { identifier in
+                model.stageRecommendationChoice(identifier)
+            },
+            toggleSuppressRecommendations: updateSuppressRecommendations,
+            previewChanges: previewChanges,
+            removePreviewLock: {
+                beginRegistryLockRemoval(details: model.changeSetErrorDetails, followUp: .preview)
+            },
+            applyChanges: { applyChanges() },
+            refreshOperationStatus: refreshOperationStatus,
+            retryLastOperation: { retryLastOperation() },
+            retryLastOperationSkippingDownloadFailures: {
+                retryLastOperation(skipDownloadFailures: true)
+            },
+            removeOperationLock: {
+                beginRegistryLockRemoval(details: model.operationErrorDetails, followUp: .apply)
+            },
+            selectCkanProvider: selectCkanProvider,
+            selectCkanRecommendation: selectCkanRecommendation,
+            skipCkanRecommendations: skipCkanRecommendations,
+            allowIncompatibleCkanFiles: allowIncompatibleCkanFiles,
+            copyDiagnostics: onCopyDiagnostics,
+            cancelOperation: cancelOperation,
+            importDownloads: { urls, options in
+                importDownloads(urls, options: options)
+            },
+            confirmLaunchWarning: confirmLaunchWarning,
+            revealUnmanagedFile: revealUnmanagedFile,
+            installHistoryModules: installHistoryModules,
+            updatePlayTime: updatePlayTime,
+            loadCacheInfo: loadCacheInfo,
+            purgeCacheToLimit: purgeCacheToLimit,
+            clearCache: clearCache,
+            removeRegistryLockAndRetry: removeRegistryLockAndRetry,
+            retryLaunchFromFailure: retryLaunchFromFailure)
+    }
+
     private var selectedModuleActionPresentation: ModuleActionPresentationState {
         guard let module = model.selectedModule else {
             return .empty
@@ -815,37 +567,9 @@ struct MainWindowView: View {
         }
     }
 
-    private var launchErrorIsPresented: Binding<Bool> {
-        Binding {
-            model.launchError != nil
-        } set: { isPresented in
-            if !isPresented {
-                model.clearLaunchError()
-            }
-        }
-    }
-
-    private var launchErrorCanRetry: Bool {
-        LaunchErrorPresentationState(message: "", details: model.launchErrorDetails).canRetry
-    }
-
-    private func launchErrorMessageText(_ message: String) -> String {
-        LaunchErrorPresentationState(message: message, details: model.launchErrorDetails).messageText
-    }
-
     private func retryLaunchFromFailure() {
         model.clearLaunchError()
         launchSelectedGame()
-    }
-
-    private var pendingLaunchWarningIsPresented: Binding<Bool> {
-        Binding {
-            model.pendingLaunchWarning != nil
-        } set: { isPresented in
-            if !isPresented {
-                model.cancelPendingLaunchWarning()
-            }
-        }
     }
 
     private func confirmLaunchWarning(suppressFutureWarnings: Bool) {
