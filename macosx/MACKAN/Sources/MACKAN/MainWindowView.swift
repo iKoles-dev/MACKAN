@@ -154,131 +154,20 @@ struct MainWindowView: View {
             }
         }
         .toolbar {
-            ToolbarItemGroup {
-                Button {
-                    refreshRepositories()
-                } label: {
-                    Label("Refresh Repositories", systemImage: "arrow.clockwise")
-                }
-                .disabled(!model.canRefreshRepositories || operationFlow.isActive(.refreshingRepositories))
-                .accessibilityLabel("Refresh Repositories")
-                .accessibilityHint("Reloads repositories and refreshes catalog data.")
-                .help("Refresh repositories and reload catalog data")
-
-                if selectedModuleActionPresentation.usesMenu {
-                    Menu {
-                        ForEach(selectedModuleActionPresentation.availableActions, id: \.rawValue) { action in
-                            Button {
-                                stageSelectedModule(action)
-                            } label: {
-                                Label(action.title, systemImage: action.symbolName)
-                            }
-                        }
-                    } label: {
-                        Label(
-                            selectedModuleActionPresentation.accessibilityLabel,
-                            systemImage: selectedModuleActionPresentation.symbolName)
-                    }
-                    .disabled(selectedModuleActionPresentation.title == nil)
-                    .accessibilityLabel("Module action menu")
-                    .help(selectedModuleActionPresentation.help)
-                } else {
-                    Button {
-                        stageSelectedModule()
-                    } label: {
-                        Label(
-                            selectedModuleActionPresentation.accessibilityLabel,
-                            systemImage: selectedModuleActionPresentation.symbolName)
-                    }
-                    .disabled(selectedModuleActionPresentation.title == nil)
-                    .accessibilityLabel(selectedModuleActionPresentation.accessibilityLabel)
-                    .help(selectedModuleActionPresentation.help)
-                }
-
-                Button {
-                    previewChanges()
-                } label: {
-                    Label("Preview Changes", systemImage: "list.bullet.rectangle")
-                }
-                .disabled(!model.hasPendingSelections || operationFlow.isActive(.resolvingChanges))
-                .accessibilityLabel("Preview Changes")
-                .accessibilityHint("Open staged module change preview.")
-                .help("Preview staged module changes")
-
-                Button {
-                    applyChanges()
-                } label: {
-                    Label("Apply Changes", systemImage: "checkmark.circle")
-                }
-                .disabled(!model.canApplyPendingChangeSet || operationFlow.isActive(.applyingChanges))
-                .accessibilityLabel("Apply Changes")
-                .accessibilityHint("Apply pending catalog changes to selected game instance.")
-                .help("Apply pending changes")
-
-                Button {
-                    model.stageUpgradeAll()
-                } label: {
-                    Label("Upgrade All", systemImage: "square.and.arrow.down")
-                }
-                .disabled(!model.canStageUpgradeAll)
-                .accessibilityLabel("Upgrade All")
-                .help("Stage all available upgrades")
-
-                Button {
-                    isInstallingFromCkanFile = true
-                } label: {
-                    Label("Install from File", systemImage: "doc.badge.plus")
-                }
-                .disabled(!model.canRefreshRepositories || operationFlow.isActive(.installingCkanFiles))
-                .accessibilityLabel("Install from File")
-                .accessibilityHint("Open file picker to install CKAN files.")
-                .help("Install mods from local .ckan files")
-
-                Button {
-                    isImportingDownloads = true
-                } label: {
-                    Label("Import Downloads", systemImage: "tray.and.arrow.down")
-                }
-                .disabled(!model.canRefreshRepositories || operationFlow.isActive(.importingDownloadFiles))
-                .accessibilityLabel("Import Downloads")
-                .accessibilityHint("Open file picker for local downloads import.")
-                .help("Import local downloaded mod archives")
-
-                Button {
-                    model.clearAllStagedChanges()
-                } label: {
-                    Label("Clear", systemImage: "xmark.circle")
-                }
-                .disabled(!model.hasPendingSelections)
-                .accessibilityLabel("Clear pending changes")
-                .help("Clear staged changes")
-
-                Button {
-                    launchSelectedGame()
-                } label: {
-                    Label(model.isLaunchingGame ? "Launching Game" : "Launch Game", systemImage: "play.fill")
-                }
-                .disabled(!model.canLaunchSelectedGame)
-                .accessibilityLabel(model.isLaunchingGame ? "Launching Game" : "Launch Game")
-                .accessibilityHint("Start the selected game instance.")
-                .help(model.isLaunchingGame ? "Launching game..." : "Launch selected game")
-
-                Button {
-                    openSelectedGameFolder()
-                } label: {
-                    Label("Open Game Folder", systemImage: "folder")
-                }
-                .disabled(!model.canOpenSelectedInstanceDirectory)
-                .accessibilityLabel("Open Game Folder")
-                .accessibilityHint("Reveal selected game directory in Finder.")
-                .help("Open selected game folder in Finder")
-
-                MackanSettingsButton {
-                    Label("Settings", systemImage: "gearshape")
-                }
-                .accessibilityLabel("Open Settings")
-                .help("Open MACKAN settings")
-            }
+            MainWindowToolbar(
+                state: toolbarState,
+                selectedModuleActionPresentation: selectedModuleActionPresentation,
+                onRefresh: refreshRepositories,
+                onStageSelectedModule: stageSelectedModule,
+                onStageSelectedModuleAction: stageSelectedModule,
+                onPreview: previewChanges,
+                onApply: { applyChanges() },
+                onUpgradeAll: { model.stageUpgradeAll() },
+                onInstallFromFile: presentCkanFileOpenPanel,
+                onImportDownloads: presentImportDownloadsOpenPanel,
+                onClear: { model.clearAllStagedChanges() },
+                onLaunch: launchSelectedGame,
+                onOpenFolder: openSelectedGameFolder)
         }
         .sheet(isPresented: operationSheetIsPresented(.changePreview)) {
             ChangeSetPreviewSheet(
@@ -738,6 +627,22 @@ struct MainWindowView: View {
                 options: fileImports.importDownloadsDraft.options,
                 skipDownloadFailures: skipDownloadFailures)
         }
+    }
+
+    private var toolbarState: MainWindowToolbarState {
+        MainWindowToolbarState(
+            canRefreshRepositories: model.canRefreshRepositories,
+            canApplyPendingChangeSet: model.canApplyPendingChangeSet,
+            hasPendingSelections: model.hasPendingSelections,
+            canStageUpgradeAll: model.canStageUpgradeAll,
+            canLaunchSelectedGame: model.canLaunchSelectedGame,
+            canOpenSelectedInstanceDirectory: model.canOpenSelectedInstanceDirectory,
+            isRefreshingRepositories: operationFlow.isActive(.refreshingRepositories),
+            isResolvingChanges: operationFlow.isActive(.resolvingChanges),
+            isApplyingChanges: operationFlow.isActive(.applyingChanges),
+            isInstallingCkanFiles: operationFlow.isActive(.installingCkanFiles),
+            isImportingDownloadFiles: operationFlow.isActive(.importingDownloadFiles),
+            isLaunchingGame: model.isLaunchingGame)
     }
 
     private var selectedModuleActionPresentation: ModuleActionPresentationState {
