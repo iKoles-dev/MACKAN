@@ -213,11 +213,7 @@ extension AppModel {
     }
 
     static func normalizedModuleColumns(_ columns: [ModuleTableColumn]) -> [ModuleTableColumn] {
-        let unique = Set(columns)
-        guard !unique.isEmpty else {
-            return ModuleTableColumn.defaultVisible
-        }
-        return ModuleTableColumn.allCases.filter(unique.contains)
+        ModuleTableColumn.normalized(columns)
     }
 
     func normalizedSecondarySortCriteria(

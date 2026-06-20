@@ -28,6 +28,14 @@ public enum ModuleTableColumn: String, CaseIterable, Codable, Identifiable, Send
         .author,
     ]
 
+    public static func normalized(_ columns: [ModuleTableColumn]) -> [ModuleTableColumn] {
+        let unique = Set(columns)
+        guard !unique.isEmpty else {
+            return defaultVisible
+        }
+        return allCases.filter(unique.contains)
+    }
+
     public var id: String { rawValue }
 
     public var title: String {
