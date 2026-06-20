@@ -14,6 +14,7 @@ private struct CatalogHeaderGridCell: Identifiable {
 private struct CatalogModuleGridCell: Identifiable {
     let module: ModuleSummary
     let column: ModuleTableColumn
+    let rowIndex: Int
 
     var id: String {
         CatalogGridIdentityPolicy.moduleCellID(moduleIdentifier: module.identifier, column: column)
@@ -176,7 +177,7 @@ struct CatalogView: View {
     @State private var isShowingSaveSearchSheet = false
     @State private var isShowingLabelsManagerSheet = false
     @State private var savedSearchName = ""
-    @State private var lastRowClick: (identifier: ModuleSummary.ID, timestamp: TimeInterval)?
+    @State private var hoveredModuleID: String?
     private static let integerFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
@@ -185,243 +186,12 @@ struct CatalogView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 10) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField("Search mods", text: $model.searchText)
-                        .textFieldStyle(.plain)
-                        .frame(minWidth: CGFloat(CatalogToolbarLayoutPolicy.searchMinimumWidth))
-                        .accessibilityLabel("Search mods")
-                        .accessibilityHint("Filter modules by text query and modifiers.")
-
-                    Menu {
-                        ForEach(ModuleSearchHelpSection.all) { section in
-                            Section(section.title) {
-                                ForEach(section.examples) { example in
-                                    Button {
-                                        model.searchText = example.query
-                                        model.filter = .all
-                                        model.tagFilter = nil
-                                    } label: {
-                                        Label(example.query, systemImage: "magnifyingglass")
-                                    }
-                                    .help(example.explanation)
-                                }
-                            }
-                        }
-                    } label: {
-                        Label("Search Syntax", systemImage: "questionmark.circle")
-                    }
-                    .labelStyle(.iconOnly)
-                    .accessibilityLabel("Search syntax")
-                    .help("Search Syntax")
-                }
-
-                ScrollView(.horizontal, showsIndicators: true) {
-                    HStack(spacing: 10) {
-
-                Picker("Filter", selection: $model.filter) {
-                    ForEach(ModuleFilter.allCases) { filter in
-                        Text(filter.title).tag(filter)
-                    }
-                }
-                .pickerStyle(.menu)
-                .accessibilityLabel("Module filter")
-                .accessibilityHint("Choose module compatibility/filter state.")
-                .frame(width: 150)
-
-                Picker("Tag", selection: $model.tagFilter) {
-                    Text("All Tags").tag(String?.none)
-                    ForEach(model.availableModuleTags, id: \.self) { tag in
-                        Text(tag).tag(String?.some(tag))
-                    }
-                }
-                .pickerStyle(.menu)
-                .frame(width: 130)
-                .disabled(model.availableModuleTags.isEmpty)
-
-                Menu {
-                    if model.availableModuleLabels.isEmpty {
-                        Text("No Labels")
-                    } else {
-                        ForEach(model.availableModuleLabels) { label in
-                            Button {
-                                toggleLabel(label.name)
-                            } label: {
-                                Label(label.name, systemImage: labelIconName(label))
-                            }
-                            .disabled(model.selectedModuleID == nil)
-                        }
-                    }
-
-                    Divider()
-
-                    Button {
-                        isShowingLabelsManagerSheet = true
-                    } label: {
-                        Label("Manage Labels", systemImage: "tag.circle")
-                    }
-                } label: {
-                    Label("Labels", systemImage: "tag")
-                }
-                .labelStyle(.iconOnly)
-                .accessibilityLabel("Manage module labels")
-                .help("Labels")
-
-                Menu {
-                    if model.savedSearches.isEmpty {
-                        Text("No Saved Searches")
-                    } else {
-                        ForEach(model.savedSearches) { savedSearch in
-                            Button {
-                                model.applySavedSearch(savedSearch.id)
-                            } label: {
-                                Label(savedSearch.name, systemImage: "magnifyingglass")
-                            }
-                        }
-
-                        Divider()
-
-                        Menu {
-                            ForEach(model.savedSearches) { savedSearch in
-                                Button(role: .destructive) {
-                                    model.deleteSavedSearch(savedSearch.id)
-                                } label: {
-                                    Label(savedSearch.name, systemImage: "trash")
-                                }
-                            }
-                        } label: {
-                            Label("Delete Saved Search", systemImage: "trash")
-                        }
-                    }
-
-                    Divider()
-
-                    Button {
-                        savedSearchName = model.currentSearchNameSuggestion
-                        isShowingSaveSearchSheet = true
-                    } label: {
-                        Label("Save Current Search", systemImage: "bookmark")
-                    }
-                    .disabled(!model.canSaveCurrentSearch)
-                } label: {
-                    Label("Saved Searches", systemImage: "bookmark")
-                }
-                .labelStyle(.iconOnly)
-                .accessibilityLabel("Saved searches")
-                .help("Saved Searches")
-
-                Menu {
-                    ForEach(ModuleTableColumn.allCases) { column in
-                        Button {
-                            model.toggleModuleColumn(column)
-                        } label: {
-                            if model.isModuleColumnVisible(column) {
-                                Label(column.title, systemImage: "checkmark")
-                            } else {
-                                Text(column.title)
-                            }
-                        }
-                        .disabled(model.visibleModuleColumns.count == 1 && model.isModuleColumnVisible(column))
-                    }
-
-                    Divider()
-
-                    Button {
-                        model.resetModuleColumns()
-                    } label: {
-                        Label("Default Columns", systemImage: "arrow.counterclockwise")
-                    }
-
-                    Button {
-                        model.showAllModuleColumns()
-                    } label: {
-                        Label("All Columns", systemImage: "tablecells")
-                    }
-                } label: {
-                    Label("Columns", systemImage: "rectangle.split.3x1")
-                }
-                .labelStyle(.iconOnly)
-                .accessibilityLabel("Table columns")
-                .help("Columns")
-
-                Picker("Sort", selection: $model.moduleSort) {
-                    ForEach(ModuleSort.allCases) { sort in
-                        Text(sort.title).tag(sort)
-                    }
-                }
-                .pickerStyle(.menu)
-                .accessibilityLabel("Primary sort")
-                .frame(width: 135)
-
-                Button {
-                    model.moduleSortAscending.toggle()
-                } label: {
-                    Label(
-                        model.moduleSortAscending ? "Ascending" : "Descending",
-                        systemImage: model.moduleSortAscending ? "arrow.up" : "arrow.down")
-                }
-                .labelStyle(.iconOnly)
-                .accessibilityLabel("Toggle sort direction")
-                .help(model.moduleSortAscending ? "Ascending" : "Descending")
-
-                Menu {
-                    ForEach(ModuleSort.allCases) { sort in
-                        let existingCriterion = model.secondarySortCriterion(for: sort)
-                        Button {
-                            if existingCriterion != nil {
-                                model.toggleSecondaryModuleSortDirection(sort)
-                            } else {
-                                model.addSecondaryModuleSort(sort)
-                            }
-                        } label: {
-                            Label(
-                                existingCriterion.map { criterion in
-                                    "\(sort.title) \(criterion.ascending ? "Ascending" : "Descending")"
-                                } ?? sort.title,
-                                systemImage: existingCriterion.map { criterion in
-                                    criterion.ascending ? "arrow.up" : "arrow.down"
-                                } ?? "plus")
-                        }
-                        .disabled(sort == model.moduleSort)
-                    }
-
-                    if !model.secondaryModuleSortCriteria.isEmpty {
-                        Divider()
-
-                        ForEach(model.secondaryModuleSortCriteria, id: \.sort) { criterion in
-                            Button {
-                                model.removeSecondaryModuleSort(criterion.sort)
-                            } label: {
-                                Label(
-                                    "Remove \(criterion.sort.title)",
-                                    systemImage: "minus.circle")
-                            }
-                        }
-
-                        Divider()
-
-                        Button {
-                            model.clearSecondaryModuleSorts()
-                        } label: {
-                            Label("Clear Secondary Sorts", systemImage: "xmark.circle")
-                        }
-                    }
-                } label: {
-                    Label("Then By", systemImage: "list.number")
-                }
-                .labelStyle(.iconOnly)
-                .accessibilityLabel("Secondary sorts")
-                .help("Secondary Sorts")
-                    }
-                    .frame(
-                        minWidth: CGFloat(CatalogToolbarLayoutPolicy.controlsMinimumWidth),
-                        alignment: .leading)
-                }
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            CatalogToolbarView(
+                model: model,
+                isShowingSaveSearchSheet: $isShowingSaveSearchSheet,
+                isShowingLabelsManagerSheet: $isShowingLabelsManagerSheet,
+                savedSearchName: $savedSearchName,
+                onToggleLabel: toggleLabel)
             .sheet(isPresented: $isShowingSaveSearchSheet) {
                 SaveSearchSheet(
                     name: $savedSearchName,
@@ -450,7 +220,7 @@ struct CatalogView: View {
                         }
 
                         ForEach(moduleGridCells) { cell in
-                            moduleCell(cell.column, cell.module)
+                            moduleCell(cell.column, cell.module, rowIndex: cell.rowIndex)
                         }
                     }
                     .frame(minWidth: gridWidth, alignment: .topLeading)
@@ -478,9 +248,9 @@ struct CatalogView: View {
     }
 
     private var moduleGridCells: [CatalogModuleGridCell] {
-        model.filteredModules.flatMap { module in
+        model.filteredModules.enumerated().flatMap { (index, module) in
             model.visibleModuleColumns.map { column in
-                CatalogModuleGridCell(module: module, column: column)
+                CatalogModuleGridCell(module: module, column: column, rowIndex: index)
             }
         }
     }
@@ -522,6 +292,7 @@ struct CatalogView: View {
             } else {
                 headerContent(column)
                     .accessibilityIdentifier(CatalogGridIdentityPolicy.headerID(for: column))
+                    .help(headerHelp(for: column))
             }
         }
         .padding(.horizontal, 8)
@@ -559,10 +330,20 @@ struct CatalogView: View {
            let criterion = model.secondarySortCriterion(for: sort) {
             return criterion.ascending ? "Secondary Sort Descending" : "Secondary Sort Ascending"
         }
+        if column.sort == nil {
+            switch column {
+            case .pending:
+                return "Shows install, remove, upgrade, or replace changes staged for this mod."
+            case .autoInstalled:
+                return "CKAN auto-installed flag. Checked mods were installed automatically as dependencies and may be removed when no longer needed."
+            default:
+                return column.title
+            }
+        }
         return "Sort by \(column.title)"
     }
 
-    private func moduleCell(_ column: ModuleTableColumn, _ module: ModuleSummary) -> some View {
+    private func moduleCell(_ column: ModuleTableColumn, _ module: ModuleSummary, rowIndex: Int) -> some View {
         moduleColumnContent(column, module)
             .padding(.horizontal, 8)
             .frame(width: defaultColumnWidth(column), height: 28, alignment: .leading)
@@ -581,21 +362,19 @@ struct CatalogView: View {
             .accessibilityIdentifier(CatalogGridIdentityPolicy.moduleCellID(
                 moduleIdentifier: module.identifier,
                 column: column))
-        .background(rowBackground(for: module))
+            .background(rowBackground(for: module, index: rowIndex))
+            .onHover { isHovering in
+                if isHovering {
+                    hoveredModuleID = module.identifier
+                } else if hoveredModuleID == module.identifier {
+                    hoveredModuleID = nil
+                }
+            }
     }
 
     private func handleModuleCellClick(_ column: ModuleTableColumn, _ module: ModuleSummary) {
-        if column.recognizesRowDoubleClick,
-           shouldTreatAsRowDoubleClick(module) {
-            model.selectedModuleID = module.identifier
-            model.togglePreferredStagedAction(for: module)
-            lastRowClick = nil
-            return
-        }
-
-        recordRowClickIfNeeded(column, module)
         model.selectedModuleID = module.identifier
-        if column == .status || column == .pending {
+        if column == .status {
             model.togglePreferredStagedAction(for: module)
             return
         }
@@ -618,32 +397,16 @@ struct CatalogView: View {
 
     private func handleModuleDoubleClick(_ module: ModuleSummary) {
         model.selectedModuleID = module.identifier
-        model.togglePreferredStagedAction(for: module)
-        lastRowClick = nil
     }
 
-    private func shouldTreatAsRowDoubleClick(_ module: ModuleSummary) -> Bool {
-        let timestamp = ProcessInfo.processInfo.systemUptime
-        guard let lastRowClick,
-              lastRowClick.identifier == module.identifier
-        else {
-            return false
+    private func rowBackground(for module: ModuleSummary, index: Int) -> Color {
+        if module.identifier == model.selectedModuleID {
+            return Color.accentColor.opacity(0.16)
         }
-        return timestamp - lastRowClick.timestamp <= NSEvent.doubleClickInterval
-    }
-
-    private func recordRowClickIfNeeded(_ column: ModuleTableColumn, _ module: ModuleSummary) {
-        if column.recognizesRowDoubleClick {
-            lastRowClick = (module.identifier, ProcessInfo.processInfo.systemUptime)
-        } else {
-            lastRowClick = nil
+        if module.identifier == hoveredModuleID {
+            return Color.secondary.opacity(0.07)
         }
-    }
-
-    private func rowBackground(for module: ModuleSummary) -> Color {
-        module.identifier == model.selectedModuleID
-            ? Color.accentColor.opacity(0.16)
-            : Color.clear
+        return index.isMultiple(of: 2) ? Color.clear : Color.primary.opacity(0.028)
     }
 
     @ViewBuilder
@@ -656,7 +419,9 @@ struct CatalogView: View {
         case .autoInstalled:
             Image(systemName: module.isAutoInstalled ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(module.isAutoInstalled ? .green : .secondary)
-                .help(module.isInstalled && !module.isAutodetected ? "Toggle Auto Installed" : "Auto Installed")
+                .help(module.isInstalled && !module.isAutodetected
+                    ? "Toggle CKAN auto-installed flag"
+                    : "CKAN auto-installed flag")
         case .name:
             moduleColumnText(module.name)
         case .identifier:
@@ -700,7 +465,7 @@ struct CatalogView: View {
         case .pending:
             return 95
         case .autoInstalled:
-            return 60
+            return 120
         case .name:
             return 220
         case .identifier:
@@ -733,13 +498,6 @@ struct CatalogView: View {
         }
     }
 
-    private func labelIconName(_ label: ModuleLabelSummary) -> String {
-        guard let identifier = model.selectedModuleID,
-              label.contains(identifier: identifier) else {
-            return "tag"
-        }
-        return "tag.fill"
-    }
 }
 
 private struct CatalogActionStatusStrip: View {
@@ -751,56 +509,77 @@ private struct CatalogActionStatusStrip: View {
     let onClearChanges: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: symbolName)
-                .foregroundStyle(tint)
-                .frame(width: 20)
-                .accessibilityHidden(true)
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(stateBorderColor)
+                .frame(height: 2)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(summary.title)
-                    .font(.callout.weight(.semibold))
-                    .lineLimit(1)
-                Text(summary.detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+            HStack(spacing: 12) {
+                Image(systemName: symbolName)
+                    .foregroundStyle(tint)
+                    .frame(width: 20)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(summary.title)
+                        .font(.callout.weight(.semibold))
+                        .lineLimit(1)
+                    Text(summary.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 12)
+
+                Button {
+                    onClearChanges()
+                } label: {
+                    Label("Clear", systemImage: "xmark.circle")
+                }
+                .keyboardShortcut(.delete, modifiers: [.command])
+                .disabled(summary.kind == .idle)
+                .help("Clear staged and previewed changes")
+
+                Button {
+                    onPreviewChanges()
+                } label: {
+                    Label(isResolvingChanges ? "Previewing" : "Preview", systemImage: "list.bullet.rectangle")
+                }
+                .keyboardShortcut("p", modifiers: [.command])
+                .disabled(!summary.canPreview || isResolvingChanges)
+                .help("Preview staged changes")
+
+                Button {
+                    onApplyChanges()
+                } label: {
+                    Label(isApplyingChanges ? "Applying" : "Apply", systemImage: "checkmark.circle")
+                }
+                .keyboardShortcut(.return, modifiers: [.command])
+                .buttonStyle(.borderedProminent)
+                .disabled(!summary.canApply || isApplyingChanges)
+                .help("Apply resolved changes")
             }
-
-            Spacer(minLength: 12)
-
-            Button {
-                onClearChanges()
-            } label: {
-                Label("Clear", systemImage: "xmark.circle")
-            }
-            .keyboardShortcut(.delete, modifiers: [.command])
-            .disabled(summary.kind == .idle)
-            .help("Clear staged and previewed changes")
-
-            Button {
-                onPreviewChanges()
-            } label: {
-                Label(isResolvingChanges ? "Previewing" : "Preview", systemImage: "list.bullet.rectangle")
-            }
-            .keyboardShortcut("p", modifiers: [.command])
-            .disabled(!summary.canPreview || isResolvingChanges)
-            .help("Preview staged changes")
-
-            Button {
-                onApplyChanges()
-            } label: {
-                Label(isApplyingChanges ? "Applying" : "Apply", systemImage: "checkmark.circle")
-            }
-            .keyboardShortcut(.return, modifiers: [.command])
-            .buttonStyle(.borderedProminent)
-            .disabled(!summary.canApply || isApplyingChanges)
-            .help("Apply resolved changes")
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(.regularMaterial)
         .accessibilityElement(children: .contain)
+    }
+
+    private var stateBorderColor: Color {
+        switch summary.kind {
+        case .idle:
+            return Color.secondary.opacity(0.15)
+        case .needsPreview:
+            return Color.accentColor.opacity(0.5)
+        case .needsResolution:
+            return Color.orange
+        case .readyToApply:
+            return Color.green
+        case .previewError:
+            return Color.red
+        }
     }
 
     private var symbolName: String {
