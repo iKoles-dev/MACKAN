@@ -46,7 +46,9 @@ struct MainWindowView: View {
     var body: some View {
         GeometryReader { geometry in
             let showSidebar = geometry.size.width >= CGFloat(MainWindowLayoutPolicy.sidebarVisibilityBreakpoint)
-            let showInspector = geometry.size.width >= CGFloat(MainWindowLayoutPolicy.inspectorVisibilityBreakpoint)
+            let showInspector = MainWindowLayoutPolicy.shouldShowInspector(
+                windowWidth: Double(geometry.size.width),
+                hasSelectedModule: model.selectedModule != nil)
 
             HStack(spacing: 0) {
                 if showSidebar {
