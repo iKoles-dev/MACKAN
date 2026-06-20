@@ -10,12 +10,44 @@ struct CatalogToolbarView: View {
     let onToggleLabel: (String) -> Void
 
     var body: some View {
+        GeometryReader { geometry in
+            Group {
+                if CatalogToolbarLayoutPolicy.shouldUseSingleRow(forWidth: Double(geometry.size.width)) {
+                    wideToolbar
+                } else {
+                    compactToolbar
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
+        .frame(height: 58)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var wideToolbar: some View {
+        HStack(spacing: CGFloat(CatalogToolbarLayoutPolicy.searchControlGap)) {
+            searchRow
+                .frame(
+                    minWidth: CGFloat(CatalogToolbarLayoutPolicy.searchMinimumWidth),
+                    idealWidth: CGFloat(CatalogToolbarLayoutPolicy.searchIdealWidth),
+                    maxWidth: 420,
+                    alignment: .leading)
+
+            controlsStack
+                .frame(
+                    minWidth: CGFloat(CatalogToolbarLayoutPolicy.controlsMinimumWidth),
+                    maxWidth: .infinity,
+                    alignment: .leading)
+        }
+    }
+
+    private var compactToolbar: some View {
         VStack(alignment: .leading, spacing: 8) {
             searchRow
             controlsRow
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var searchRow: some View {
@@ -34,22 +66,26 @@ struct CatalogToolbarView: View {
 
     private var controlsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                filterPicker
-                tagPicker
-                Divider().frame(height: 18)
-                labelsMenu
-                savedSearchesMenu
-                Divider().frame(height: 18)
-                columnsMenu
-                Divider().frame(height: 18)
-                sortPicker
-                sortDirectionButton
-                secondarySortMenu
-            }
+            controlsStack
             .frame(
                 minWidth: CGFloat(CatalogToolbarLayoutPolicy.controlsMinimumWidth),
                 alignment: .leading)
+        }
+    }
+
+    private var controlsStack: some View {
+        HStack(spacing: 8) {
+            filterPicker
+            tagPicker
+            Divider().frame(height: 18)
+            labelsMenu
+            savedSearchesMenu
+            Divider().frame(height: 18)
+            columnsMenu
+            Divider().frame(height: 18)
+            sortPicker
+            sortDirectionButton
+            secondarySortMenu
         }
     }
 

@@ -38,9 +38,27 @@ final class CatalogLayoutPolicyTests: XCTestCase {
             forWidth: 760,
             storedColumns: ModuleTableColumn.defaultVisible)
 
-        XCTAssertLessThanOrEqual(compact.totalWidth, 980)
+        XCTAssertEqual(compact.totalWidth, 760)
         XCTAssertGreaterThanOrEqual(compact.width(for: .name), 260)
         XCTAssertLessThanOrEqual(compact.width(for: .status), 72)
+    }
+
+    func testTableFillsWideViewportWhenColumnsWouldOtherwiseLeaveDeadSpace() {
+        let layout = CatalogLayoutPolicy.layout(
+            forWidth: 1440,
+            storedColumns: ModuleTableColumn.defaultVisible)
+
+        XCTAssertEqual(layout.totalWidth, 1440)
+        XCTAssertGreaterThan(layout.width(for: .name), CatalogLayoutPolicy.responsiveWidth(for: .name, viewportWidth: 1440))
+        XCTAssertGreaterThan(layout.width(for: .author), CatalogLayoutPolicy.responsiveWidth(for: .author, viewportWidth: 1440))
+    }
+
+    func testWideUserColumnSetKeepsHorizontalScrollWhenItNeedsMoreThanViewport() {
+        let layout = CatalogLayoutPolicy.layout(
+            forWidth: 1440,
+            storedColumns: ModuleTableColumn.allCases)
+
+        XCTAssertGreaterThan(layout.totalWidth, 1440)
     }
 
     func testRowMetricsAreStableAcrossBreakpoints() {

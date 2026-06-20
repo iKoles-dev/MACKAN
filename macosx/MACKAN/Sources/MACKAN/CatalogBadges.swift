@@ -6,13 +6,13 @@ struct StatusBadge: View {
     let status: ModuleStatus
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             Image(systemName: status.symbolName)
-                .foregroundStyle(status.color)
+                .imageScale(.small)
             Text(status.title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.caption2.weight(.semibold))
         }
+        .foregroundStyle(status.color)
         .lineLimit(1)
     }
 }
@@ -30,7 +30,7 @@ struct PendingActionBadge: View {
             .foregroundStyle(Color.accentColor)
             .lineLimit(1)
         } else {
-            Text("")
+            EmptyView()
         }
     }
 }

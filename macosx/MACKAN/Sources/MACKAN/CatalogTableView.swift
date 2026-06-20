@@ -36,6 +36,7 @@ struct CatalogTableView: View {
             }
             .frame(minWidth: layout.totalWidth, alignment: .topLeading)
         }
+        .scrollIndicators(.hidden, axes: .horizontal)
     }
 }
 

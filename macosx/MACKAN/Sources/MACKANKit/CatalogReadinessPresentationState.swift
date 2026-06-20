@@ -33,6 +33,10 @@ public struct CatalogActionSummaryPresentationState: Equatable, Sendable {
     public let canPreview: Bool
     public let canApply: Bool
 
+    public var showsActions: Bool {
+        kind != .idle
+    }
+
     public init(
         stagedActionCount: Int,
         versionedInstallCount: Int,

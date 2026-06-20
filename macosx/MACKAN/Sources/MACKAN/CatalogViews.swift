@@ -182,39 +182,46 @@ private struct CatalogActionStatusStrip: View {
 
                 Spacer(minLength: 12)
 
-                Button {
-                    onClearChanges()
-                } label: {
-                    Label("Clear", systemImage: "xmark.circle")
+                if summary.showsActions {
+                    actionButtons
                 }
-                .keyboardShortcut(.delete, modifiers: [.command])
-                .disabled(summary.kind == .idle)
-                .help("Clear staged and previewed changes")
-
-                Button {
-                    onPreviewChanges()
-                } label: {
-                    Label(isResolvingChanges ? "Previewing" : "Preview", systemImage: "list.bullet.rectangle")
-                }
-                .keyboardShortcut("p", modifiers: [.command])
-                .disabled(!summary.canPreview || isResolvingChanges)
-                .help("Preview staged changes")
-
-                Button {
-                    onApplyChanges()
-                } label: {
-                    Label(isApplyingChanges ? "Applying" : "Apply", systemImage: "checkmark.circle")
-                }
-                .keyboardShortcut(.return, modifiers: [.command])
-                .buttonStyle(.borderedProminent)
-                .disabled(!summary.canApply || isApplyingChanges)
-                .help("Apply resolved changes")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
         .background(.regularMaterial)
         .accessibilityElement(children: .contain)
+    }
+
+    private var actionButtons: some View {
+        HStack(spacing: 8) {
+            Button {
+                onClearChanges()
+            } label: {
+                Label("Clear", systemImage: "xmark.circle")
+            }
+            .keyboardShortcut(.delete, modifiers: [.command])
+            .help("Clear staged and previewed changes")
+
+            Button {
+                onPreviewChanges()
+            } label: {
+                Label(isResolvingChanges ? "Previewing" : "Preview", systemImage: "list.bullet.rectangle")
+            }
+            .keyboardShortcut("p", modifiers: [.command])
+            .disabled(!summary.canPreview || isResolvingChanges)
+            .help("Preview staged changes")
+
+            Button {
+                onApplyChanges()
+            } label: {
+                Label(isApplyingChanges ? "Applying" : "Apply", systemImage: "checkmark.circle")
+            }
+            .keyboardShortcut(.return, modifiers: [.command])
+            .buttonStyle(.borderedProminent)
+            .disabled(!summary.canApply || isApplyingChanges)
+            .help("Apply resolved changes")
+        }
     }
 
     private var stateBorderColor: Color {

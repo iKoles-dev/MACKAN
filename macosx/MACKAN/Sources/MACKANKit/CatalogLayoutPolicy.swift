@@ -22,11 +22,17 @@ public enum CatalogLayoutPolicy {
         storedColumns: [ModuleTableColumn]
     ) -> Layout {
         let columns = visibleColumns(forWidth: width, storedColumns: storedColumns)
+        let baseWidths = Dictionary(uniqueKeysWithValues: columns.map { column in
+            (column, responsiveWidth(for: column, viewportWidth: width))
+        })
+        let widths = widthsFillingViewport(
+            width,
+            columns: columns,
+            baseWidths: baseWidths)
+
         return Layout(
             columns: columns,
-            widths: Dictionary(uniqueKeysWithValues: columns.map { column in
-                (column, responsiveWidth(for: column, viewportWidth: width))
-            }))
+            widths: widths)
     }
 
     public static func visibleColumns(
@@ -85,5 +91,55 @@ public enum CatalogLayoutPolicy {
 
     public static func rowHeight(forWidth width: CGFloat) -> CGFloat {
         width >= 1400 ? 28 : 30
+    }
+
+    private static func widthsFillingViewport(
+        _ viewportWidth: CGFloat,
+        columns: [ModuleTableColumn],
+        baseWidths: [ModuleTableColumn: CGFloat]
+    ) -> [ModuleTableColumn: CGFloat] {
+        let baseTotal = columns.reduce(CGFloat(0)) { partial, column in
+            partial + (baseWidths[column] ?? defaultWidth(for: column))
+        }
+        guard baseTotal < viewportWidth else {
+            return baseWidths
+        }
+
+        let flexibleColumns = columns.filter { column in
+            flexibleWeight(for: column) > 0
+        }
+        guard !flexibleColumns.isEmpty else {
+            return baseWidths
+        }
+
+        let extraWidth = viewportWidth - baseTotal
+        let totalWeight = flexibleColumns.reduce(CGFloat(0)) { partial, column in
+            partial + flexibleWeight(for: column)
+        }
+        guard totalWeight > 0 else {
+            return baseWidths
+        }
+
+        var widths = baseWidths
+        for column in flexibleColumns {
+            let share = extraWidth * flexibleWeight(for: column) / totalWeight
+            widths[column] = (widths[column] ?? defaultWidth(for: column)) + share
+        }
+        return widths
+    }
+
+    private static func flexibleWeight(for column: ModuleTableColumn) -> CGFloat {
+        switch column {
+        case .name:
+            return 6
+        case .description:
+            return 5
+        case .author:
+            return 4
+        case .tags, .identifier:
+            return 2
+        default:
+            return 0
+        }
     }
 }

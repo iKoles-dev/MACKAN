@@ -7,4 +7,9 @@ final class CatalogToolbarLayoutPolicyTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(CatalogToolbarLayoutPolicy.controlsMinimumWidth, CatalogToolbarLayoutPolicy.calculatedControlsMinimumWidth)
         XCTAssertLessThan(CatalogToolbarLayoutPolicy.minimumContentWidth, 760)
     }
+
+    func testWideToolbarUsesSingleRowWhenSearchAndControlsFit() {
+        XCTAssertFalse(CatalogToolbarLayoutPolicy.shouldUseSingleRow(forWidth: 960))
+        XCTAssertTrue(CatalogToolbarLayoutPolicy.shouldUseSingleRow(forWidth: 1120))
+    }
 }

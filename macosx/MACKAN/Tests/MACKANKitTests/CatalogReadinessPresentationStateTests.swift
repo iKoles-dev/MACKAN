@@ -15,6 +15,7 @@ final class CatalogReadinessPresentationStateTests: XCTestCase {
         XCTAssertEqual(state.detail, "Select a module, then use Install, Remove, Upgrade, or Replace.")
         XCTAssertFalse(state.canPreview)
         XCTAssertFalse(state.canApply)
+        XCTAssertFalse(state.showsActions)
     }
 
     func testActionSummaryCountsStagedChangesAndPromptsPreview() {
@@ -29,6 +30,7 @@ final class CatalogReadinessPresentationStateTests: XCTestCase {
         XCTAssertEqual(state.detail, "Preview changes to resolve dependencies before applying.")
         XCTAssertTrue(state.canPreview)
         XCTAssertFalse(state.canApply)
+        XCTAssertTrue(state.showsActions)
     }
 
     func testActionSummaryShowsResolvedPreviewReadyForApply() {
@@ -50,6 +52,7 @@ final class CatalogReadinessPresentationStateTests: XCTestCase {
         XCTAssertEqual(state.detail, "Review the resolved change set, then apply.")
         XCTAssertTrue(state.canPreview)
         XCTAssertTrue(state.canApply)
+        XCTAssertTrue(state.showsActions)
     }
 
     func testCatalogLoadPresentationReassuresLongInitialLoadsWithoutCount() {
