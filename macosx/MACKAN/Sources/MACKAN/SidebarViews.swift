@@ -259,7 +259,6 @@ struct SidebarView: View {
             .accessibilityLabel("Games and maintenance sections")
             .listStyle(.sidebar)
         }
-        .background(.bar)
         .confirmationDialog(
             "Forget Instance?",
             isPresented: isConfirmingInstanceRemoval,
@@ -381,12 +380,12 @@ private struct BuiltInSavedSearchButton: View {
                     .lineLimit(1)
             } icon: {
                 Image(systemName: systemImage)
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
             }
             .padding(.vertical, 3)
             .padding(.horizontal, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isSelected ? Color.accentColor.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+            .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+            .fontWeight(isSelected ? .semibold : .regular)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -405,12 +404,12 @@ private struct MaintenanceSidebarRow: View {
                 .lineLimit(1)
         } icon: {
             Image(systemName: pane.symbolName)
-                .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
         }
         .padding(.vertical, 3)
         .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(isSelected ? Color.accentColor.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+        .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+        .fontWeight(isSelected ? .semibold : .regular)
         .contentShape(Rectangle())
     }
 }

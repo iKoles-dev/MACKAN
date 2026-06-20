@@ -55,8 +55,8 @@ struct MainWindowView: View {
                     SidebarView(model: model)
                         .frame(
                             minWidth: CGFloat(MainWindowLayoutPolicy.sidebarMinimumWidth),
-                            idealWidth: 250,
-                            maxWidth: 280)
+                            idealWidth: CGFloat(MainWindowLayoutPolicy.sidebarIdealWidth(forWindowWidth: Double(geometry.size.width))),
+                            maxWidth: CGFloat(MainWindowLayoutPolicy.sidebarMaximumWidth(forWindowWidth: Double(geometry.size.width))))
 
                     Divider()
                 }

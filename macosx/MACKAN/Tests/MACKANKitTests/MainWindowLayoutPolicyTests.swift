@@ -22,4 +22,10 @@ final class MainWindowLayoutPolicyTests: XCTestCase {
         XCTAssertFalse(MainWindowLayoutPolicy.shouldShowInspector(windowWidth: 900, hasSelectedModule: true))
         XCTAssertTrue(MainWindowLayoutPolicy.shouldShowInspector(windowWidth: 1120, hasSelectedModule: true))
     }
+
+    func testSidebarWidthsLeaveCatalogRoom() {
+        XCTAssertEqual(MainWindowLayoutPolicy.sidebarIdealWidth(forWindowWidth: 1120), 240)
+        XCTAssertEqual(MainWindowLayoutPolicy.sidebarIdealWidth(forWindowWidth: 1440), 260)
+        XCTAssertLessThanOrEqual(MainWindowLayoutPolicy.sidebarMaximumWidth(forWindowWidth: 1120), 260)
+    }
 }

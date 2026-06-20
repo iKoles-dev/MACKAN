@@ -16,4 +16,12 @@ public enum MainWindowLayoutPolicy {
         }
         return windowWidth >= emptyInspectorVisibilityBreakpoint
     }
+
+    public static func sidebarIdealWidth(forWindowWidth width: Double) -> Double {
+        width >= 1400 ? 260 : 240
+    }
+
+    public static func sidebarMaximumWidth(forWindowWidth width: Double) -> Double {
+        width >= 1400 ? 280 : 260
+    }
 }
