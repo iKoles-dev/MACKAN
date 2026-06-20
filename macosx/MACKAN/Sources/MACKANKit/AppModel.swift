@@ -64,6 +64,8 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var updateCheckError: String?
     @Published public internal(set) var isCheckingForUpdates = false
     @Published public internal(set) var mainContentRoute: MainContentRoute = .catalog
+    @Published public var activeSheet: AppSheet? = nil
+    internal var sheetPresentationTask: Task<Void, Never>? = nil
     @Published public var selectedInstanceID: GameInstanceSummary.ID?
     @Published public var selectedModuleID: ModuleSummary.ID?
     @Published public var searchText = "" {
