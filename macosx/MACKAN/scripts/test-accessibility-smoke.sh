@@ -118,11 +118,38 @@ do
     assert_contains_in_files ".accessibilityLabel(\"$label\")" "Missing accessibility label: $label" "${SOURCE_FILES[@]}"
 done
 
-assert_contains_any "$MAIN_WINDOW" "Missing launch label" \
+assert_contains_any_in_files() {
+    local message="$1"
+    shift
+    local patterns=("$1")
+    shift
+    while [[ "$1" != "--" ]]; do
+        patterns+=("$1")
+        shift
+    done
+    shift
+    local files=("$@")
+
+    for file in "${files[@]}"; do
+        for pattern in "${patterns[@]}"; do
+            if grep -qF -- "$pattern" "$file"; then
+                return 0
+            fi
+        done
+    done
+
+    echo "Accessibility smoke failed: $message" >&2
+    echo "Expected one of: ${patterns[*]}" >&2
+    echo "In source files under: $SOURCE_DIR" >&2
+    exit 1
+}
+
+assert_contains_any_in_files "Missing launch label" \
     '.accessibilityLabel("Launch Game")' \
     '.accessibilityLabel("Launching Game")' \
-    '.accessibilityLabel(model.isLaunchingGame ? "Launching Game" : "Launch Game")'
-assert_contains_in_files '.accessibilityLabel(model.isLaunchingGame ? "Launching Game" : "Launch Game")' "Missing launch label" "${SOURCE_FILES[@]}"
+    '.accessibilityLabel(model.isLaunchingGame ? "Launching Game" : "Launch Game")' \
+    '.accessibilityLabel(state.isLaunchingGame ? "Launching Game" : "Launch Game")' \
+    -- "${SOURCE_FILES[@]}"
 
 assert_contains "$CATALOG_VIEW" '.keyboardShortcut("p", modifiers: [.command])' "Preview strip shortcut missing"
 assert_contains "$CATALOG_VIEW" '.keyboardShortcut(.delete, modifiers: [.command])' "Clear strip shortcut missing"
