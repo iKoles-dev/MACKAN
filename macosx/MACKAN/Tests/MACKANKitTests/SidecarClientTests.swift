@@ -29,6 +29,31 @@ final class SidecarClientTests: XCTestCase {
         XCTAssertEqual(instances.instances.map(\.id), ["primary"])
     }
 
+    func testCommandClientIgnoresJsonRpcNotificationsBeforeResponse() async throws {
+        let script = """
+        while IFS= read -r line; do
+          printf '%s\\n' '{"jsonrpc":"2.0","method":"operations.event","params":{"operationId":"op-42","event":{"kind":"message","message":"Installing GenericMoverPack","percent":null,"identifier":"GenericMoverPack","remainingBytes":null,"totalBytes":null}}}'
+          printf '%s\\n' '{"jsonrpc":"2.0","id":1,"result":{"operationId":"op-42","instanceId":"primary","status":"completed","changes":[],"events":[],"error":null}}'
+        done
+        """
+        let command = SidecarClient.Command(
+            executableURL: URL(fileURLWithPath: "/bin/sh"),
+            arguments: ["-c", script]
+        )
+        let client = SidecarClient(command: command)
+
+        let result = try await client.applyChanges(
+            instanceId: "primary",
+            install: ["GenericMoverPack"],
+            remove: [],
+            upgrade: [],
+            replace: []
+        )
+
+        XCTAssertEqual(result.operationId, "op-42")
+        XCTAssertEqual(result.status, "completed")
+    }
+
     func testOperationApplyAndStatusUseSameTransport() async throws {
         let transport = RecordingSidecarTransport(responses: [
             #"{"jsonrpc":"2.0","id":1,"result":{"operationId":"op-42","instanceId":"primary","status":"completed","changes":[],"events":[],"error":null}}"#,
@@ -632,7 +657,7 @@ final class SidecarClientTests: XCTestCase {
 
     func testListInstallationHistoryUsesExpectedMethodAndParams() async throws {
         let transport = RecordingSidecarTransport(responses: [
-            #"{"jsonrpc":"2.0","id":1,"result":{"instanceId":"primary","entries":[{"fileName":"installed-Primary_KSP-2026-05-31_10-00-00.ckan","savedAt":"2026-05-31T10:00:00.0000000Z","modules":[{"identifier":"ModuleManager","name":"Module Manager","version":"4.2.3","author":"sarbian","abstract":"Core patch manager","isInstalled":false,"isAvailable":true}]}]}}"#,
+            #"{"jsonrpc":"2.0","id":1,"result":{"instanceId":"primary","entries":[{"fileName":"installed-Primary_KSP-2026-05-31_10-00-00.ckan","savedAt":"2026-05-31T10:00:00.0000000Z","moduleCount":1}]}}"#,
         ])
         let client = SidecarClient(transport: transport)
 
@@ -644,15 +669,31 @@ final class SidecarClientTests: XCTestCase {
         XCTAssertEqual(result.entries.count, 1)
         XCTAssertEqual(result.entries[0].fileName, "installed-Primary_KSP-2026-05-31_10-00-00.ckan")
         XCTAssertEqual(result.entries[0].savedAt, "2026-05-31T10:00:00.0000000Z")
-        XCTAssertEqual(result.entries[0].modules.map(\.identifier), ["ModuleManager"])
-        XCTAssertEqual(result.entries[0].modules[0].version, "4.2.3")
-        XCTAssertEqual(result.entries[0].modules[0].author, "sarbian")
-        XCTAssertEqual(result.entries[0].modules[0].abstract, "Core patch manager")
-        XCTAssertFalse(result.entries[0].modules[0].isInstalled)
-        XCTAssertTrue(result.entries[0].modules[0].isAvailable)
+        XCTAssertEqual(result.entries[0].moduleCount, 1)
         XCTAssertEqual(requests.count, 1)
         XCTAssertTrue(requests[0].contains(#""method":"maintenance.history""#))
         XCTAssertEqual(params["instanceId"] as? String, "primary")
+    }
+
+    func testLoadInstallationHistoryEntryUsesExpectedMethodAndParams() async throws {
+        let transport = RecordingSidecarTransport(responses: [
+            #"{"jsonrpc":"2.0","id":1,"result":{"fileName":"installed-Primary_KSP-2026-05-31_10-00-00.ckan","savedAt":"2026-05-31T10:00:00.0000000Z","modules":[{"identifier":"ModuleManager","name":"Module Manager","version":"4.2.3","author":"sarbian","abstract":"Core patch manager","isInstalled":false,"isAvailable":true}]}}"#,
+        ])
+        let client = SidecarClient(transport: transport)
+
+        let result = try await client.loadInstallationHistoryEntry(
+            instanceId: "primary",
+            fileName: "installed-Primary_KSP-2026-05-31_10-00-00.ckan")
+        let requests = await transport.capturedRequests()
+        let params = try requestParams(from: requests[0])
+
+        XCTAssertEqual(result.fileName, "installed-Primary_KSP-2026-05-31_10-00-00.ckan")
+        XCTAssertEqual(result.modules.map(\.identifier), ["ModuleManager"])
+        XCTAssertEqual(result.modules[0].version, "4.2.3")
+        XCTAssertEqual(requests.count, 1)
+        XCTAssertTrue(requests[0].contains(#""method":"maintenance.historyEntry""#))
+        XCTAssertEqual(params["instanceId"] as? String, "primary")
+        XCTAssertEqual(params["fileName"] as? String, "installed-Primary_KSP-2026-05-31_10-00-00.ckan")
     }
 
     func testListPlayTimeUsesExpectedMethod() async throws {

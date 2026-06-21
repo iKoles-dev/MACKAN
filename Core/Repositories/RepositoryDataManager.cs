@@ -92,7 +92,7 @@ namespace CKAN
                                 IProgress<int>?                 percentProgress)
         {
             // Look up the sizes of repos that have uncached files
-            var reposAndSizes = repos.Where(r => r.uri != null && !repositoriesData.ContainsKey(r))
+            var reposAndSizes = repos.Where(r => r.uri != null && !HasRepoData(r))
                                      .Select(r => new Tuple<Repository, string>(r, GetRepoDataPath(r)))
                                      .Where(tuple => File.Exists(tuple.Item2))
                                      .Select(tuple => new Tuple<Repository, long>(tuple.Item1,
@@ -199,8 +199,8 @@ namespace CKAN
                         using (target)
                         {
                             // Load the stream, save to in memory cache
-                            var repoData = repositoriesData[repo] =
-                                RepositoryData.FromStream(target.contents, game, progress);
+                            var repoData = RepositoryData.FromStream(target.contents, game, progress);
+                            StoreRepoData(repo, repoData);
                             // Save parsed data to disk
                             log.DebugFormat("Saving data for {0} repo...", repo.name);
                             repoData.SaveTo(GetRepoDataPath(repo));
@@ -241,7 +241,7 @@ namespace CKAN
                 downloader.onOneCompleted -= setETag;
             }
 
-            return repositoriesData.Values.Any(repoData => repoData.UnsupportedSpec)
+            return AnyRepoDataHasUnsupportedSpec()
                 ? UpdateResult.OutdatedClient
                 : UpdateResult.Updated;
         }
@@ -304,21 +304,71 @@ namespace CKAN
         #endregion
 
         private RepositoryData? GetRepoData(Repository repo)
-            => repositoriesData.TryGetValue(repo, out RepositoryData? data)
+            => TryGetRepoData(repo, out RepositoryData? data)
                 ? data
                 : LoadRepoData(repo, null);
 
         private RepositoryData? LoadRepoData(Repository repo, IProgress<int>? progress)
         {
+            if (TryGetRepoData(repo, out RepositoryData? cachedData))
+            {
+                return cachedData;
+            }
+
             var path = GetRepoDataPath(repo);
             log.DebugFormat("Looking for data in {0}", path);
             var data = RepositoryData.FromJson(path, progress);
             if (data != null)
             {
                 log.Debug("Found it! Adding...");
-                repositoriesData.Add(repo, data);
+                return StoreRepoDataIfAbsent(repo, data);
             }
             return data;
+        }
+
+        private bool HasRepoData(Repository repo)
+        {
+            lock (repositoriesDataLock)
+            {
+                return repositoriesData.ContainsKey(repo);
+            }
+        }
+
+        private bool TryGetRepoData(Repository repo, out RepositoryData? data)
+        {
+            lock (repositoriesDataLock)
+            {
+                return repositoriesData.TryGetValue(repo, out data);
+            }
+        }
+
+        private void StoreRepoData(Repository repo, RepositoryData data)
+        {
+            lock (repositoriesDataLock)
+            {
+                repositoriesData[repo] = data;
+            }
+        }
+
+        private RepositoryData StoreRepoDataIfAbsent(Repository repo, RepositoryData data)
+        {
+            lock (repositoriesDataLock)
+            {
+                if (repositoriesData.TryGetValue(repo, out RepositoryData? existing))
+                {
+                    return existing;
+                }
+                repositoriesData.Add(repo, data);
+                return data;
+            }
+        }
+
+        private bool AnyRepoDataHasUnsupportedSpec()
+        {
+            lock (repositoriesDataLock)
+            {
+                return repositoriesData.Values.Any(repoData => repoData.UnsupportedSpec);
+            }
         }
 
         private IEnumerable<RepositoryData> GetRepoDatas(IEnumerable<Repository>? repos)
@@ -340,6 +390,7 @@ namespace CKAN
 
         private readonly Dictionary<Repository, RepositoryData> repositoriesData =
             new Dictionary<Repository, RepositoryData>();
+        private readonly object repositoriesDataLock = new object();
 
         private string GetRepoDataPath(Repository repo)
             => GetRepoDataPath(repo, NetFileCache.CreateURLHash(repo?.uri));

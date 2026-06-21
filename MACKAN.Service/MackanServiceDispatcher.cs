@@ -23,7 +23,8 @@ namespace CKAN.MACKAN.Service
             IMackanMaintenanceProvider? maintenanceProvider = null,
             IMackanSettingsProvider? settingsProvider = null,
             IMackanLabelProvider? labelProvider = null,
-            IMackanUpdateProvider? updateProvider = null)
+            IMackanUpdateProvider? updateProvider = null,
+            Action<string>? notificationCallback = null)
         {
             this.versionProvider = versionProvider
                 ?? (() => Meta.GetVersion(VersionFormat.Full)?.ToString() ?? "unknown");
@@ -33,7 +34,7 @@ namespace CKAN.MACKAN.Service
             this.moduleProvider = moduleProvider ?? new CoreMackanModuleProvider();
             this.repositoryProvider = repositoryProvider ?? new CoreMackanRepositoryProvider();
             this.changeSetProvider = changeSetProvider ?? new CoreMackanChangeSetProvider();
-            this.operationProvider = operationProvider ?? new CoreMackanOperationProvider();
+            this.operationProvider = operationProvider ?? new CoreMackanOperationProvider(notificationCallback);
             this.exportProvider = exportProvider ?? new CoreMackanExportProvider();
             this.maintenanceProvider = maintenanceProvider ?? new CoreMackanMaintenanceProvider();
             this.settingsProvider = settingsProvider ?? new CoreMackanSettingsProvider();
@@ -101,6 +102,7 @@ namespace CKAN.MACKAN.Service
                     "maintenance.scan" => MaintenanceScan(id, root),
                     "maintenance.unmanagedFiles" => MaintenanceUnmanagedFiles(id, root),
                     "maintenance.history" => MaintenanceHistory(id, root),
+                    "maintenance.historyEntry" => MaintenanceHistoryEntry(id, root),
                     "maintenance.playTime" => Result(id, maintenanceProvider.ListPlayTime()),
                     "maintenance.updatePlayTime" => MaintenanceUpdatePlayTime(id, root),
                     "maintenance.downloadStatistics" => MaintenanceDownloadStatistics(id, root),
@@ -995,6 +997,19 @@ namespace CKAN.MACKAN.Service
             }
 
             return Result(id, maintenanceProvider.ListInstallationHistory(instanceId));
+        }
+
+        private string MaintenanceHistoryEntry(object? id, JsonElement root)
+        {
+            var instanceId = ReadStringParam(root, "instanceId");
+            var fileName = ReadStringParam(root, "fileName");
+            if (string.IsNullOrWhiteSpace(instanceId)
+                || string.IsNullOrWhiteSpace(fileName))
+            {
+                return Error(id, -32602, "Invalid params");
+            }
+
+            return Result(id, maintenanceProvider.LoadInstallationHistoryEntry(instanceId, fileName));
         }
 
         private string MaintenanceUpdatePlayTime(object? id, JsonElement root)

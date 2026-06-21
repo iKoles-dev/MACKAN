@@ -125,6 +125,7 @@ public protocol SidecarProviding: Sendable {
     func scanGameData(instanceId: String?) async throws -> MaintenanceScanResult
     func listUnmanagedFiles(instanceId: String?) async throws -> UnmanagedFilesResult
     func listInstallationHistory(instanceId: String?) async throws -> InstallationHistoryResult
+    func loadInstallationHistoryEntry(instanceId: String?, fileName: String) async throws -> InstallationHistoryEntry
     func listPlayTime() async throws -> PlayTimeResult
     func updatePlayTime(instanceId: String, hours: Double) async throws -> PlayTimeResult
     func downloadStatistics(instanceId: String?) async throws -> DownloadStatisticsResult
@@ -553,10 +554,21 @@ actor StdioSidecarTransport: SidecarTransport {
                 throw SidecarClientError.invalidResponse
             }
             lines.append(line)
-            if line.trimmingCharacters(in: .whitespaces).hasPrefix("{") {
+            if Self.isJSONRPCResponseLine(line) {
                 return lines.joined(separator: "\n")
             }
         }
+    }
+
+    private static func isJSONRPCResponseLine(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("{"),
+              let data = trimmed.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return false
+        }
+        return object.keys.contains("id")
     }
 
     private static func readLine(from handle: FileHandle) -> String? {

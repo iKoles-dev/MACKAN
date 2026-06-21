@@ -64,19 +64,52 @@ right-click -> Open. A signed and notarized DMG remains a separate release gate.
 
 ## Run Locally
 
-Build and open a local development app bundle:
+Build and open a local development app bundle (always in repo build folder):
 
 ```bash
 APP_PATH="$(macosx/MACKAN/scripts/build-dev-app.sh)"
 open "$APP_PATH"
 ```
 
-Build a local universal DMG:
+Build a local universal DMG (artifacts also in repo build folder):
 
 ```bash
 DMG_PATH="$(macosx/MACKAN/scripts/package-dmg.sh --universal)"
 open "$(dirname "$DMG_PATH")"
 ```
+
+Quick one-liners from repo root:
+
+```bash
+make run                # build + launch app
+make run-universal      # build universal + launch app
+make app                # build app (prints path)
+make dmg                # build and open DMG (single-arch sidecar)
+make dmg-universal      # build and open universal DMG
+make launcher           # build no-terminal AppleScript launcher app
+make run-gui            # run AppleScript launcher (build + launch, no console)
+make run-gui-universal  # run launcher with universal build (no console)
+make clean              # remove build artifacts from default $(BUILD_ROOT)
+make clean-staging      # remove staging folder with MACKAN.Service publish artifacts only
+make path               # print default app path
+```
+
+No-terminal usage:
+
+```bash
+make launcher                 # creates ./.build/mackan-app/launchers/MACKAN-Launcher.app
+open ./.build/mackan-app/launchers/MACKAN-Launcher.app
+```
+
+After that, you can always start the app from Finder by double-clicking the launcher in `.build/mackan-app` (no Terminal window).
+
+If you need custom install options, use:
+
+```bash
+MACKAN_SELF_CONTAINED=false APP_NAME=MyMACKAN make run
+```
+
+Default behavior also auto-removes staging sidecar publish output after each build/launch/dmg action.
 
 Run the non-credential release gate:
 
@@ -88,7 +121,7 @@ Run a launch smoke check against the staged app:
 
 ```bash
 macosx/MACKAN/scripts/verify-app-launch.sh --timeout 25 \
-    "$HOME/Library/Caches/MACKAN/build/MACKAN.app"
+    ".build/mackan-app/MACKAN.app"
 ```
 
 ## Development Docs

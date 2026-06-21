@@ -103,4 +103,108 @@ final class OperationPresentationStateTests: XCTestCase {
             OperationTimelinePresentationState(result: result).events.map(\.percent),
             [0])
     }
+
+    func testOperationProgressAggregatesEventsIntoOneRowPerChangedModule() {
+        let result = OperationResult(
+            operationId: "op-1",
+            instanceId: "primary",
+            status: "running",
+            changes: [
+                ChangeSummary(
+                    identifier: "FirespitterCore",
+                    name: "Firespitter Core",
+                    action: "install",
+                    fromVersion: nil,
+                    toVersion: "v7.17",
+                    reasons: ["Dependency of USI-Core"],
+                    isUserRequested: false,
+                    isAuto: true),
+                ChangeSummary(
+                    identifier: "USI-Core",
+                    name: "USI Core",
+                    action: "install",
+                    fromVersion: nil,
+                    toVersion: "v112.0.1",
+                    reasons: ["Dependency of USI-NuclearRockets"],
+                    isUserRequested: false,
+                    isAuto: true),
+            ],
+            events: [
+                OperationEvent(
+                    kind: "message",
+                    message: "Operation queued",
+                    percent: nil,
+                    identifier: nil,
+                    remainingBytes: nil,
+                    totalBytes: nil),
+                OperationEvent(
+                    kind: "downloadProgress",
+                    message: "Firespitter Core",
+                    percent: 20,
+                    identifier: "FirespitterCore",
+                    remainingBytes: 800,
+                    totalBytes: 1_000),
+                OperationEvent(
+                    kind: "downloadProgress",
+                    message: "Firespitter Core",
+                    percent: 70,
+                    identifier: "FirespitterCore",
+                    remainingBytes: 300,
+                    totalBytes: 1_000),
+                OperationEvent(
+                    kind: "installProgress",
+                    message: "USI Core",
+                    percent: 40,
+                    identifier: "USI-Core",
+                    remainingBytes: 600,
+                    totalBytes: 1_000),
+            ],
+            error: nil)
+
+        let state = OperationProgressPresentationState(result: result)
+
+        XCTAssertEqual(state.rows.map(\.id), ["FirespitterCore", "USI-Core"])
+        XCTAssertEqual(state.rows.map(\.title), ["Firespitter Core", "USI Core"])
+        XCTAssertEqual(state.rows.map(\.phase), [.downloading, .installing])
+        XCTAssertEqual(state.rows.map(\.progressFraction), [0.7, 0.4])
+        XCTAssertEqual(state.rows.first?.byteProgressDisplay, "700 bytes of 1 KB")
+        XCTAssertEqual(state.currentActivity, "USI Core")
+    }
+
+    func testOperationProgressUsesChangeRowsBeforePerModuleEventsArrive() {
+        let result = OperationResult(
+            operationId: "op-1",
+            instanceId: "primary",
+            status: "running",
+            changes: [
+                ChangeSummary(
+                    identifier: "USITools",
+                    name: "USI Tools",
+                    action: "install",
+                    fromVersion: nil,
+                    toVersion: "v112.0.1",
+                    reasons: ["Dependency of USI-Core"],
+                    isUserRequested: false,
+                    isAuto: true),
+            ],
+            events: [
+                OperationEvent(
+                    kind: "message",
+                    message: "About to install:",
+                    percent: nil,
+                    identifier: nil,
+                    remainingBytes: nil,
+                    totalBytes: nil),
+            ],
+            error: nil)
+
+        let state = OperationProgressPresentationState(result: result)
+
+        XCTAssertEqual(state.rows.count, 1)
+        XCTAssertEqual(state.rows[0].id, "USITools")
+        XCTAssertEqual(state.rows[0].phase, .queued)
+        XCTAssertEqual(state.rows[0].subtitle, "Install v112.0.1")
+        XCTAssertNil(state.rows[0].progressFraction)
+        XCTAssertEqual(state.currentActivity, "About to install:")
+    }
 }

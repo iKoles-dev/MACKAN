@@ -50,4 +50,11 @@ public enum MaintenancePane: String, CaseIterable, Identifiable, Equatable, Send
 public enum MainContentRoute: Equatable, Sendable {
     case catalog
     case maintenance(MaintenancePane)
+
+    public var isMaintenance: Bool {
+        if case .maintenance = self {
+            return true
+        }
+        return false
+    }
 }

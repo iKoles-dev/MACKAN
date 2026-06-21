@@ -23,7 +23,6 @@ public enum ModuleTableColumn: String, CaseIterable, Codable, Identifiable, Send
         .status,
         .pending,
         .name,
-        .installedVersion,
         .latestVersion,
         .author,
     ]
@@ -45,7 +44,7 @@ public enum ModuleTableColumn: String, CaseIterable, Codable, Identifiable, Send
         case .pending:
             return "Pending"
         case .autoInstalled:
-            return "Auto"
+            return "Auto-installed"
         case .name:
             return "Name"
         case .identifier:

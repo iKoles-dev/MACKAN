@@ -47,6 +47,7 @@ struct MainWindowSheets: ViewModifier {
                     dependencyChoiceNotice: model.pendingDependencyChoiceNotice,
                     errorMessage: model.changeSetError,
                     errorDetails: model.changeSetErrorDetails,
+                    isResolving: operationFlow.isActive(.resolvingChanges),
                     isApplying: operationFlow.isActive(.applyingChanges),
                     suppressRecommendations: model.pendingChangeSet?.suppressRecommendations
                         ?? model.recommendationSettings?.suppressRecommendations
@@ -120,6 +121,14 @@ struct MainWindowSheets: ViewModifier {
             .sheet(isPresented: maintenanceSheetIsPresented(for: .history)) {
                 InstallationHistorySheet(
                     result: model.installationHistoryResult,
+                    selectedEntry: model.selectedInstallationHistoryEntry,
+                    isLoadingSelectedEntry: false,
+                    showsChrome: true,
+                    onSelectEntry: { entry in
+                        Task {
+                            try? await model.loadInstallationHistoryEntry(fileName: entry.fileName)
+                        }
+                    },
                     onInstallMissing: { modules in
                         actions.installHistoryModules(modules, false)
                     },
@@ -185,7 +194,7 @@ struct MainWindowSheets: ViewModifier {
             } message: {
                 Text(maintenanceScanSummary)
             }
-            .alert("GameData scan failed", isPresented: maintenanceErrorIsPresented) {
+            .alert(model.maintenanceErrorTitle, isPresented: maintenanceErrorIsPresented) {
                 Button("OK", role: .cancel) {
                     model.clearMaintenanceError()
                 }

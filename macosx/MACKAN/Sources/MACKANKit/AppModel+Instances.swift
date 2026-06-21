@@ -10,14 +10,20 @@ extension AppModel {
             let healthResult = try await health
             let versionResult = try await version
             let instanceResult = try await loadedInstances
+            let previousSelectedInstanceID = selectedInstanceID
             instances = instanceResult.instances
             sidecarVersion = versionResult
             selectedInstanceID = instanceResult.defaultInstanceId
                 ?? instances.first(where: \.isDefault)?.id
                 ?? instances.first?.id
+            if let previousSelectedInstanceID,
+               previousSelectedInstanceID != selectedInstanceID {
+                clearAllStagedChanges()
+            }
             healthState = .ready(healthResult)
             try await loadInstanceState(for: selectedInstanceID)
         } catch {
+            catalogLoadProgress = nil
             sidecarVersion = nil
             healthState = .failed(error.localizedDescription)
         }
@@ -28,11 +34,17 @@ extension AppModel {
     }
 
     public func selectInstance(_ instanceID: GameInstanceSummary.ID?) async {
+        if let instanceID,
+           !instances.contains(where: { $0.id == instanceID }) {
+            return
+        }
         showCatalog()
         selectedInstanceID = instanceID
+        clearAllStagedChanges()
         do {
             try await loadInstanceState(for: instanceID)
         } catch {
+            catalogLoadProgress = nil
             modules = []
             selectedModuleID = nil
             selectedModuleDetails = nil
@@ -56,6 +68,7 @@ extension AppModel {
             ?? result.defaultInstanceId
             ?? instances.first(where: \.isDefault)?.id
             ?? instances.first?.id
+        clearAllStagedChanges()
         try await loadInstanceState(for: selectedInstanceID)
     }
 
@@ -80,6 +93,7 @@ extension AppModel {
             ?? result.defaultInstanceId
             ?? instances.first(where: \.isDefault)?.id
             ?? instances.first?.id
+        clearAllStagedChanges()
         try await loadInstanceState(for: selectedInstanceID)
     }
 
@@ -112,6 +126,7 @@ extension AppModel {
             ?? result.defaultInstanceId
             ?? instances.first(where: \.isDefault)?.id
             ?? instances.first?.id
+        clearAllStagedChanges()
         try await loadInstanceState(for: selectedInstanceID)
     }
 
@@ -121,6 +136,7 @@ extension AppModel {
         selectedInstanceID = result.defaultInstanceId
             ?? instances.first(where: \.isDefault)?.id
             ?? instanceID
+        clearAllStagedChanges()
         try await loadInstanceState(for: selectedInstanceID)
     }
 
@@ -144,6 +160,7 @@ extension AppModel {
                 ?? instances.first(where: \.isDefault)?.id
                 ?? instances.first?.id
         }
+        clearAllStagedChanges()
         try await loadInstanceState(for: selectedInstanceID)
     }
 
@@ -162,6 +179,7 @@ extension AppModel {
                 ?? instances.first(where: \.isDefault)?.id
                 ?? selectedInstanceID
         }
+        clearAllStagedChanges()
         try await loadInstanceState(for: selectedInstanceID)
     }
 

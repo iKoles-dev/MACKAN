@@ -1,0 +1,164 @@
+Another instance of SwiftPM (PID: 4770) is already running using '/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/.build', waiting until that process has finished execution...[0/1] Planning build
+Building for debugging...
+[0/6] Write sources
+[1/6] Write swift-version--58304C5D6DBC2206.txt
+error: emit-module command failed with exit code 1 (use -v to see invocation)
+[3/6] Emitting module MACKANKitTests
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2E/E2ETestHelpers.swift:10:20: error: invalid redeclaration of 'NotificationStreamingTransport'
+  8 | 
+  9 | /// Simulates a duplex notification streaming transport for R2
+ 10 | public final class NotificationStreamingTransport: SidecarTransport, @unchecked Sendable {
+    |                    `- error: invalid redeclaration of 'NotificationStreamingTransport'
+ 11 |     private var responses: [String] = []
+ 12 |     private var requestCount = 0
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2E/E2ETestHelpers.swift:53:14: error: invalid redeclaration of 'MackanSandboxBookmarkManager'
+ 51 | /// Persistent security-scoped bookmark manager for R3
+ 52 | @MainActor
+ 53 | public class MackanSandboxBookmarkManager {
+    |              `- error: invalid redeclaration of 'MackanSandboxBookmarkManager'
+ 54 |     private let userDefaults: UserDefaults
+ 55 |     private let prefix = "mackan.bookmark."
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2E/E2ETestHelpers.swift:99:14: error: invalid redeclaration of 'MackanSpotlightController'
+ 97 | /// CoreSpotlight manager for R4
+ 98 | @MainActor
+ 99 | public class MackanSpotlightController {
+    |              `- error: invalid redeclaration of 'MackanSpotlightController'
+100 |     private let domainIdentifier = "mackan.mods"
+101 |     
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2ETests.swift:105:34: error: 'MackanSandboxBookmarkManager' is ambiguous for type lookup in this context
+ 26 | 
+ 27 | /// Persistent security-scoped bookmark manager for R3
+ 28 | class MackanSandboxBookmarkManager {
+    |       `- note: found this candidate
+ 29 |     private let userDefaults: UserDefaults
+ 30 |     private let prefix = "mackan.bookmark."
+    :
+103 |     
+104 |     private var tempDir: URL!
+105 |     private var bookmarkManager: MackanSandboxBookmarkManager!
+    |                                  `- error: 'MackanSandboxBookmarkManager' is ambiguous for type lookup in this context
+106 |     private var spotlightController: MackanSpotlightController!
+107 |     
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2E/E2ETestHelpers.swift:53:14: note: found this candidate
+ 51 | /// Persistent security-scoped bookmark manager for R3
+ 52 | @MainActor
+ 53 | public class MackanSandboxBookmarkManager {
+    |              `- note: found this candidate
+ 54 |     private let userDefaults: UserDefaults
+ 55 |     private let prefix = "mackan.bookmark."
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2ETests.swift:106:38: error: 'MackanSpotlightController' is ambiguous for type lookup in this context
+ 72 | /// CoreSpotlight manager for R4
+ 73 | @MainActor
+ 74 | class MackanSpotlightController {
+    |       `- note: found this candidate
+ 75 |     private let domainIdentifier = "mackan.mods"
+ 76 |     
+    :
+104 |     private var tempDir: URL!
+105 |     private var bookmarkManager: MackanSandboxBookmarkManager!
+106 |     private var spotlightController: MackanSpotlightController!
+    |                                      `- error: 'MackanSpotlightController' is ambiguous for type lookup in this context
+107 |     
+108 |     override func setUp() {
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2E/E2ETestHelpers.swift:99:14: note: found this candidate
+ 97 | /// CoreSpotlight manager for R4
+ 98 | @MainActor
+ 99 | public class MackanSpotlightController {
+    |              `- note: found this candidate
+100 |     private let domainIdentifier = "mackan.mods"
+101 |     
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/SidecarClientTests.swift:1963:15: error: invalid redeclaration of 'RecordingSidecarTransport'
+1961 | }
+1962 | 
+1963 | private actor RecordingSidecarTransport: SidecarTransport {
+     |               `- error: invalid redeclaration of 'RecordingSidecarTransport'
+1964 |     private var responses: [String]
+1965 |     private var requests: [String] = []
+[4/6] Compiling MACKANKitTests E2ETestHelpers.swift
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2E/E2ETestHelpers.swift:10:20: error: invalid redeclaration of 'NotificationStreamingTransport'
+  8 | 
+  9 | /// Simulates a duplex notification streaming transport for R2
+ 10 | public final class NotificationStreamingTransport: SidecarTransport, @unchecked Sendable {
+    |                    `- error: invalid redeclaration of 'NotificationStreamingTransport'
+ 11 |     private var responses: [String] = []
+ 12 |     private var requestCount = 0
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2E/E2ETestHelpers.swift:53:14: error: invalid redeclaration of 'MackanSandboxBookmarkManager'
+ 51 | /// Persistent security-scoped bookmark manager for R3
+ 52 | @MainActor
+ 53 | public class MackanSandboxBookmarkManager {
+    |              `- error: invalid redeclaration of 'MackanSandboxBookmarkManager'
+ 54 |     private let userDefaults: UserDefaults
+ 55 |     private let prefix = "mackan.bookmark."
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2E/E2ETestHelpers.swift:99:14: error: invalid redeclaration of 'MackanSpotlightController'
+ 97 | /// CoreSpotlight manager for R4
+ 98 | @MainActor
+ 99 | public class MackanSpotlightController {
+    |              `- error: invalid redeclaration of 'MackanSpotlightController'
+100 |     private let domainIdentifier = "mackan.mods"
+101 |     
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2E/E2ETestHelpers.swift:20:14: error: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead
+ 18 |     
+ 19 |     public func request(_ requestLine: String) async throws -> String {
+ 20 |         lock.lock()
+    |              `- error: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead
+ 21 |         defer { lock.unlock() }
+ 22 |         requestCount += 1
+
+Foundation.NSLock.lock:2:11: note: 'lock()' declared here
+1 | class NSLock {
+2 | open func lock()}
+  |           `- note: 'lock()' declared here
+3 | 
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2E/E2ETestHelpers.swift:21:22: error: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead
+ 19 |     public func request(_ requestLine: String) async throws -> String {
+ 20 |         lock.lock()
+ 21 |         defer { lock.unlock() }
+    |                      `- error: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead
+ 22 |         requestCount += 1
+ 23 |         if responses.isEmpty {
+
+Foundation.NSLock.unlock:2:11: note: 'unlock()' declared here
+1 | class NSLock {
+2 | open func unlock()}
+  |           `- note: 'unlock()' declared here
+3 | 
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2E/E2ETestHelpers.swift:41:14: error: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead
+ 39 |     
+ 40 |     public func request(_ requestLine: String) async throws -> String {
+ 41 |         lock.lock()
+    |              `- error: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead
+ 42 |         defer { lock.unlock() }
+ 43 |         recordedRequests.append(requestLine)
+
+Foundation.NSLock.lock:2:11: note: 'lock()' declared here
+1 | class NSLock {
+2 | open func lock()}
+  |           `- note: 'lock()' declared here
+3 | 
+
+/Users/elijahn/GitHub/MACKAN/macosx/MACKAN/Tests/MACKANKitTests/E2E/E2ETestHelpers.swift:42:22: error: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead
+ 40 |     public func request(_ requestLine: String) async throws -> String {
+ 41 |         lock.lock()
+ 42 |         defer { lock.unlock() }
+    |                      `- error: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead
+ 43 |         recordedRequests.append(requestLine)
+ 44 |         if responses.isEmpty {
+
+Foundation.NSLock.unlock:2:11: note: 'unlock()' declared here
+1 | class NSLock {
+2 | open func unlock()}
+  |           `- note: 'unlock()' declared here
+3 | 
+error: fatalError

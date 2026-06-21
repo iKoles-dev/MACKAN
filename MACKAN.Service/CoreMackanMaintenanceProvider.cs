@@ -77,19 +77,47 @@ namespace CKAN.MACKAN.Service
                 throw new ArgumentException($"Instance '{instanceId}' was not found.");
             }
 
-            var registry = RegistryManager.ReadOnlyRegistry(instance, repositoryData);
             if (!Directory.Exists(instance.InstallHistoryDir))
             {
                 return new MackanInstallationHistoryResult(
                     instance.Name,
-                    Array.Empty<MackanInstallationHistoryEntry>());
+                    Array.Empty<MackanInstallationHistoryEntrySummary>());
             }
 
             var entries = instance.InstallHistoryFiles()
-                .Select(file => HistoryEntry(file, instance, registry))
+                .Select(HistoryEntrySummary)
                 .ToArray();
 
             return new MackanInstallationHistoryResult(instance.Name, entries);
+        }
+
+        public MackanInstallationHistoryEntry LoadInstallationHistoryEntry(string? instanceId, string fileName)
+        {
+            using var manager = new GameInstanceManager(
+                new NullUser(),
+                configuration);
+
+            var instance = SelectInstance(manager, instanceId);
+            if (instance == null || !instance.Valid)
+            {
+                throw new ArgumentException($"Instance '{instanceId}' was not found.");
+            }
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                throw new ArgumentException("History file name is required.");
+            }
+
+            var file = Directory.Exists(instance.InstallHistoryDir)
+                ? instance.InstallHistoryFiles()
+                    .FirstOrDefault(candidate => StringComparer.Ordinal.Equals(candidate.Name, fileName))
+                : null;
+            if (file == null)
+            {
+                throw new ArgumentException($"Installation history snapshot '{fileName}' was not found.");
+            }
+
+            var registry = RegistryManager.ReadOnlyRegistry(instance, repositoryData);
+            return HistoryEntry(file, instance, registry);
         }
 
         public MackanPlayTimeResult ListPlayTime()
@@ -462,6 +490,29 @@ namespace CKAN.MACKAN.Service
                     file.Name,
                     file.CreationTimeUtc.ToString("O"),
                     Array.Empty<MackanInstallationHistoryModule>());
+            }
+        }
+
+        private static MackanInstallationHistoryEntrySummary HistoryEntrySummary(FileInfo file)
+        {
+            try
+            {
+                var moduleCount = CkanModule.FromFile(file.FullName)
+                    .depends
+                    ?.OfType<ModuleRelationshipDescriptor>()
+                    .Count()
+                    ?? 0;
+                return new MackanInstallationHistoryEntrySummary(
+                    file.Name,
+                    file.CreationTimeUtc.ToString("O"),
+                    moduleCount);
+            }
+            catch
+            {
+                return new MackanInstallationHistoryEntrySummary(
+                    file.Name,
+                    file.CreationTimeUtc.ToString("O"),
+                    0);
             }
         }
 

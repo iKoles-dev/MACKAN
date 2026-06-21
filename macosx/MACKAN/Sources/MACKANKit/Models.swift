@@ -15,6 +15,14 @@ public enum ModuleFilter: String, CaseIterable, Codable, Identifiable, Sendable 
 
     public var id: String { rawValue }
 
+    public static let builtInSavedSearches: [ModuleFilter] = [
+        .available,
+        .upgradable,
+        .installed,
+        .cached,
+        .incompatible,
+    ]
+
     public var title: String {
         switch self {
         case .all:
@@ -39,6 +47,23 @@ public enum ModuleFilter: String, CaseIterable, Codable, Identifiable, Sendable 
             return "New"
         case .replaceable:
             return "Replaceable"
+        }
+    }
+
+    public var builtInSavedSearchSystemImage: String {
+        switch self {
+        case .available:
+            return "circle"
+        case .upgradable:
+            return "arrow.up.circle"
+        case .installed:
+            return "checkmark.circle"
+        case .cached:
+            return "externaldrive"
+        case .incompatible:
+            return "exclamationmark.triangle"
+        default:
+            return "line.3.horizontal.decrease.circle"
         }
     }
 

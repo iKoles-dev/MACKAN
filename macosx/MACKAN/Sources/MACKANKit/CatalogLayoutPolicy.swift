@@ -2,6 +2,8 @@ import CoreGraphics
 import Foundation
 
 public enum CatalogLayoutPolicy {
+    public static let verticalScrollIndicatorGutter: CGFloat = 12
+
     public struct Layout: Equatable, Sendable {
         public let columns: [ModuleTableColumn]
         public let widths: [ModuleTableColumn: CGFloat]
@@ -35,18 +37,27 @@ public enum CatalogLayoutPolicy {
             widths: widths)
     }
 
+    public static func contentWidth(forViewportWidth viewportWidth: CGFloat) -> CGFloat {
+        max(0, viewportWidth - verticalScrollIndicatorGutter)
+    }
+
     public static func visibleColumns(
         forWidth width: CGFloat,
         storedColumns: [ModuleTableColumn]
     ) -> [ModuleTableColumn] {
         let normalized = ModuleTableColumn.normalized(storedColumns)
         if width < 900 {
-            return [.status, .name, .installedVersion, .latestVersion]
+            return columnsFittingViewport(
+                width,
+                candidates: [.status, .name, .latestVersion])
         }
         if width < 1280 {
-            return ModuleTableColumn.defaultVisible
+            return columnsFittingViewport(
+                width,
+                candidates: ModuleTableColumn.defaultVisible)
         }
-        return normalized.contains(.name) ? normalized : [.name] + normalized
+        let columns = normalized.contains(.name) ? normalized : [.name] + normalized
+        return columnsFittingViewport(width, candidates: columns)
     }
 
     public static func responsiveWidth(
@@ -55,7 +66,7 @@ public enum CatalogLayoutPolicy {
     ) -> CGFloat {
         switch column {
         case .status:
-            return viewportWidth < 900 ? 72 : 86
+            return 56
         case .pending:
             return 88
         case .autoInstalled:
@@ -93,6 +104,10 @@ public enum CatalogLayoutPolicy {
         width >= 1400 ? 28 : 30
     }
 
+    public static func selectionScrollBottomInset(forRowHeight rowHeight: CGFloat) -> CGFloat {
+        rowHeight + 8
+    }
+
     private static func widthsFillingViewport(
         _ viewportWidth: CGFloat,
         columns: [ModuleTableColumn],
@@ -128,10 +143,29 @@ public enum CatalogLayoutPolicy {
         return widths
     }
 
+    private static func columnsFittingViewport(
+        _ viewportWidth: CGFloat,
+        candidates: [ModuleTableColumn]
+    ) -> [ModuleTableColumn] {
+        var columns: [ModuleTableColumn] = []
+        for column in candidates {
+            let proposed = columns + [column]
+            let proposedWidth = proposed.reduce(CGFloat(0)) { partial, proposedColumn in
+                partial + responsiveWidth(for: proposedColumn, viewportWidth: viewportWidth)
+            }
+            if proposedWidth <= viewportWidth || columns.isEmpty {
+                columns.append(column)
+            }
+        }
+        return columns.isEmpty ? [.name] : columns
+    }
+
     private static func flexibleWeight(for column: ModuleTableColumn) -> CGFloat {
         switch column {
         case .name:
             return 6
+        case .latestVersion:
+            return 2
         case .description:
             return 5
         case .author:

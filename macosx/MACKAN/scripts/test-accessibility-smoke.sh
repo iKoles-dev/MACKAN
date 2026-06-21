@@ -113,7 +113,7 @@ for label in \
     "Table columns" \
     "Primary sort" \
     "Secondary sorts" \
-    "Module details tabs"
+    "Module details section"
 do
     assert_contains_in_files ".accessibilityLabel(\"$label\")" "Missing accessibility label: $label" "${SOURCE_FILES[@]}"
 done

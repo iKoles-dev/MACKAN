@@ -3,10 +3,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_APP_SCRIPT="$SCRIPT_DIR/build-dev-app.sh"
+PACKAGE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$PACKAGE_DIR/../.." && pwd)"
 
 APP_NAME="${APP_NAME:-MACKAN}"
 APP_VERSION="${APP_VERSION:-}"
-DEFAULT_BUILD_ROOT="${HOME}/Library/Caches/MACKAN/build"
+DEFAULT_BUILD_ROOT="${REPO_ROOT}/.build/mackan-app"
 BUILD_ROOT="${BUILD_ROOT:-$DEFAULT_BUILD_ROOT}"
 BUILD_APP="${MACKAN_BUILD_APP:-true}"
 VERIFY_CODESIGN="${MACKAN_VERIFY_CODESIGN:-true}"
@@ -26,7 +28,7 @@ Environment:
   APP_NAME                 App bundle name. Default: MACKAN
   APP_VERSION              Bundle/DMG version. If set, reused for volume and default DMG naming.
                            If unset, version is inferred from APP_PATH Info.plist or falls back to 0.1.0.
-  BUILD_ROOT               Build output root. Default: ~/Library/Caches/MACKAN/build
+  BUILD_ROOT               Build output root. Default: <repo-root>/.build/mackan-app
   MACKAN_BUILD_APP         true/false; run build-dev-app.sh before packaging. Default: true
   MACKAN_VERIFY_CODESIGN   true/false; verify app codesign before packaging. Default: true
   MACKAN_UNIVERSAL         true/false; build universal app before packaging. Default: false

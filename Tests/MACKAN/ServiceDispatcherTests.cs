@@ -2558,7 +2558,7 @@ namespace Tests.MACKAN
         }
 
         [Test]
-        public void MaintenanceHistoryReturnsInstallationSnapshots()
+        public void MaintenanceHistoryReturnsInstallationSnapshotSummaries()
         {
             var dispatcher = new MackanServiceDispatcher(
                 () => "1.2.3-test",
@@ -2566,20 +2566,10 @@ namespace Tests.MACKAN
                     "primary",
                     new[]
                     {
-                        new MackanInstallationHistoryEntry(
+                        new MackanInstallationHistoryEntrySummary(
                             "installed-Primary_KSP-2026-05-31_10-00-00.ckan",
                             "2026-05-31T10:00:00.0000000Z",
-                            new[]
-                            {
-                                new MackanInstallationHistoryModule(
-                                    "ModuleManager",
-                                    "Module Manager",
-                                    "4.2.3",
-                                    "sarbian",
-                                    "Core patch manager",
-                                    false,
-                                    true),
-                            }),
+                            1),
                     })));
 
             using var document = JsonDocument.Parse(
@@ -2587,13 +2577,45 @@ namespace Tests.MACKAN
             var root = document.RootElement;
             var result = root.GetProperty("result");
             var entries = result.GetProperty("entries");
-            var modules = entries[0].GetProperty("modules");
 
             Assert.That(root.GetProperty("id").GetInt32(), Is.EqualTo(32));
             Assert.That(result.GetProperty("instanceId").GetString(), Is.EqualTo("primary"));
             Assert.That(entries.GetArrayLength(), Is.EqualTo(1));
             Assert.That(entries[0].GetProperty("fileName").GetString(), Is.EqualTo("installed-Primary_KSP-2026-05-31_10-00-00.ckan"));
             Assert.That(entries[0].GetProperty("savedAt").GetString(), Is.EqualTo("2026-05-31T10:00:00.0000000Z"));
+            Assert.That(entries[0].GetProperty("moduleCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(entries[0].TryGetProperty("modules", out _), Is.False);
+        }
+
+        [Test]
+        public void MaintenanceHistoryEntryReturnsSelectedSnapshotModules()
+        {
+            var dispatcher = new MackanServiceDispatcher(
+                () => "1.2.3-test",
+                maintenanceProvider: new FakeMaintenanceProvider(historyEntry: new MackanInstallationHistoryEntry(
+                    "installed-Primary_KSP-2026-05-31_10-00-00.ckan",
+                    "2026-05-31T10:00:00.0000000Z",
+                    new[]
+                    {
+                        new MackanInstallationHistoryModule(
+                            "ModuleManager",
+                            "Module Manager",
+                            "4.2.3",
+                            "sarbian",
+                            "Core patch manager",
+                            false,
+                            true),
+                    })));
+
+            using var document = JsonDocument.Parse(
+                dispatcher.Handle("{\"jsonrpc\":\"2.0\",\"id\":33,\"method\":\"maintenance.historyEntry\",\"params\":{\"instanceId\":\"primary\",\"fileName\":\"installed-Primary_KSP-2026-05-31_10-00-00.ckan\"}}"));
+            var root = document.RootElement;
+            var result = root.GetProperty("result");
+            var modules = result.GetProperty("modules");
+
+            Assert.That(root.GetProperty("id").GetInt32(), Is.EqualTo(33));
+            Assert.That(result.GetProperty("fileName").GetString(), Is.EqualTo("installed-Primary_KSP-2026-05-31_10-00-00.ckan"));
+            Assert.That(result.GetProperty("savedAt").GetString(), Is.EqualTo("2026-05-31T10:00:00.0000000Z"));
             Assert.That(modules.GetArrayLength(), Is.EqualTo(1));
             Assert.That(modules[0].GetProperty("identifier").GetString(), Is.EqualTo("ModuleManager"));
             Assert.That(modules[0].GetProperty("name").GetString(), Is.EqualTo("Module Manager"));
@@ -3613,6 +3635,7 @@ namespace Tests.MACKAN
                 MackanMaintenanceScanResult? result = null,
                 MackanUnmanagedFilesResult? unmanagedResult = null,
                 MackanInstallationHistoryResult? historyResult = null,
+                MackanInstallationHistoryEntry? historyEntry = null,
                 MackanPlayTimeResult? playTimeResult = null,
                 MackanDownloadStatisticsResult? downloadStatisticsResult = null,
                 MackanCacheInfoResult? cacheInfoResult = null,
@@ -3624,6 +3647,7 @@ namespace Tests.MACKAN
                 this.result = result;
                 this.unmanagedResult = unmanagedResult;
                 this.historyResult = historyResult;
+                this.historyEntry = historyEntry;
                 this.playTimeResult = playTimeResult;
                 this.downloadStatisticsResult = downloadStatisticsResult;
                 this.cacheInfoResult = cacheInfoResult;
@@ -3649,6 +3673,13 @@ namespace Tests.MACKAN
             {
                 Assert.That(instanceId, Is.EqualTo("primary"));
                 return historyResult ?? throw new InvalidOperationException("Unexpected installation history list.");
+            }
+
+            public MackanInstallationHistoryEntry LoadInstallationHistoryEntry(string? instanceId, string fileName)
+            {
+                Assert.That(instanceId, Is.EqualTo("primary"));
+                Assert.That(fileName, Is.EqualTo("installed-Primary_KSP-2026-05-31_10-00-00.ckan"));
+                return historyEntry ?? throw new InvalidOperationException("Unexpected installation history entry.");
             }
 
             public MackanPlayTimeResult ListPlayTime()
@@ -3705,6 +3736,7 @@ namespace Tests.MACKAN
             private readonly MackanMaintenanceScanResult? result;
             private readonly MackanUnmanagedFilesResult? unmanagedResult;
             private readonly MackanInstallationHistoryResult? historyResult;
+            private readonly MackanInstallationHistoryEntry? historyEntry;
             private readonly MackanPlayTimeResult? playTimeResult;
             private readonly MackanDownloadStatisticsResult? downloadStatisticsResult;
             private readonly MackanCacheInfoResult? cacheInfoResult;

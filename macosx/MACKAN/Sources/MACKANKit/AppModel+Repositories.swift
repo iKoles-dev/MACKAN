@@ -67,8 +67,8 @@ extension AppModel {
         repositories = result.repositories
         let moduleResult = try await sidecar.listModules(instanceId: selectedInstanceID)
         modules = markNewModules(moduleResult.modules, comparedTo: previousModules)
-        selectedModuleID = modules.first?.id
-        await refreshSelectedModuleDetails()
+        selectFirstFilteredModule()
+        await refreshSelectedModuleDetails(force: true)
     }
 
     private func markNewModules(

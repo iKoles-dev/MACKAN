@@ -471,6 +471,26 @@ public struct InstallationHistoryModule: Identifiable, Codable, Equatable, Senda
     }
 }
 
+public struct InstallationHistoryEntrySummary: Identifiable, Codable, Equatable, Sendable {
+    public let fileName: String
+    public let savedAt: String
+    public let moduleCount: Int
+
+    public var id: String {
+        fileName
+    }
+
+    public init(
+        fileName: String,
+        savedAt: String,
+        moduleCount: Int
+    ) {
+        self.fileName = fileName
+        self.savedAt = savedAt
+        self.moduleCount = moduleCount
+    }
+}
+
 public struct InstallationHistoryEntry: Identifiable, Codable, Equatable, Sendable {
     public let fileName: String
     public let savedAt: String
@@ -493,11 +513,11 @@ public struct InstallationHistoryEntry: Identifiable, Codable, Equatable, Sendab
 
 public struct InstallationHistoryResult: Codable, Equatable, Sendable {
     public let instanceId: String?
-    public let entries: [InstallationHistoryEntry]
+    public let entries: [InstallationHistoryEntrySummary]
 
     public init(
         instanceId: String?,
-        entries: [InstallationHistoryEntry]
+        entries: [InstallationHistoryEntrySummary]
     ) {
         self.instanceId = instanceId
         self.entries = entries

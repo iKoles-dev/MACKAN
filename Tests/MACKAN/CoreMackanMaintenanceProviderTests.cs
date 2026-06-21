@@ -114,6 +114,45 @@ namespace Tests.MACKAN
         }
 
         [Test]
+        public void DownloadStatisticsToleratesDuplicateRepositoryUrls()
+        {
+            var user = new NullUser();
+            using var instance = new DisposableKSP();
+            var cachePath = Path.Combine(instance.KSP.GameDir, "MACKANCache");
+            using var config = new FakeConfiguration(instance.KSP, instance.KSP.Name, cachePath);
+            var module = TestData.DogeCoinFlag_101_module();
+            var primaryRepo = new Repository("primary", "https://example.invalid/repo.tar.gz", 0);
+            var duplicateRepo = new Repository("duplicate", "https://example.invalid/repo.tar.gz", 1);
+            using var repoData = new TemporaryRepositoryData(
+                user,
+                new Dictionary<Repository, RepositoryData>
+                {
+                    { primaryRepo, new RepositoryData(new[] { module }, null, null, null, false) },
+                });
+            var zipBytes = new FileInfo(TestData.DogeCoinFlagZip()).Length;
+            using (var registry = RegistryManager.Instance(
+                instance.KSP,
+                repoData.Manager,
+                new[] { primaryRepo, duplicateRepo }))
+            {
+                registry.Save();
+            }
+
+            using (var cache = new NetModuleCache(config.DownloadCacheDir!))
+            {
+                cache.Store(module, TestData.DogeCoinFlagZip(), null);
+            }
+
+            var provider = new CoreMackanMaintenanceProvider(config, repoData.Manager);
+
+            var result = provider.DownloadStatistics(instance.KSP.Name);
+
+            Assert.That(result.InstanceId, Is.EqualTo(instance.KSP.Name));
+            Assert.That(result.Hosts.Single().Bytes, Is.EqualTo(zipBytes));
+            Assert.That(result.TotalBytes, Is.EqualTo(zipBytes));
+        }
+
+        [Test]
         public void ClearCacheRemovesDisposableDownloadCacheFiles()
         {
             using var instance = new DisposableKSP();
@@ -307,7 +346,7 @@ namespace Tests.MACKAN
         }
 
         [Test]
-        public void ListInstallationHistoryReadsDisposableInstanceSnapshotsAndRegistryMetadata()
+        public void ListInstallationHistoryReadsDisposableInstanceSnapshotSummariesWithoutRegistryMetadata()
         {
             var user = new NullUser();
             using var instance = new DisposableKSP();
@@ -322,11 +361,31 @@ namespace Tests.MACKAN
 
             var result = provider.ListInstallationHistory(instance.KSP.Name);
             var entry = result.Entries.Single();
+
+            Assert.That(result.InstanceId, Is.EqualTo(instance.KSP.Name));
+            Assert.That(entry.FileName, Is.EqualTo("installed-PrimaryKSP-test.ckan"));
+            Assert.That(entry.ModuleCount, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void LoadInstallationHistoryEntryReadsDisposableInstanceSnapshotRegistryMetadata()
+        {
+            var user = new NullUser();
+            using var instance = new DisposableKSP();
+            using var config = new FakeConfiguration(instance.KSP, instance.KSP.Name);
+            using var repo = new TemporaryRepository(HistoryExactOld, HistoryExactNew, HistoryLatest);
+            using var repoData = new TemporaryRepositoryData(user, repo.repo);
+            using var setupRegistry = RegistryManager.Instance(instance.KSP, repoData.Manager, new[] { repo.repo });
+            var snapshotPath = Path.Combine(instance.KSP.InstallHistoryDir, "installed-PrimaryKSP-test.ckan");
+            File.WriteAllText(snapshotPath, HistorySnapshot);
+
+            var provider = new CoreMackanMaintenanceProvider(config, repoData.Manager);
+
+            var entry = provider.LoadInstallationHistoryEntry(instance.KSP.Name, "installed-PrimaryKSP-test.ckan");
             var exact = entry.Modules.Single(module => module.Identifier == "HistoryExact");
             var latest = entry.Modules.Single(module => module.Identifier == "HistoryLatest");
             var missing = entry.Modules.Single(module => module.Identifier == "HistoryMissing");
 
-            Assert.That(result.InstanceId, Is.EqualTo(instance.KSP.Name));
             Assert.That(entry.FileName, Is.EqualTo("installed-PrimaryKSP-test.ckan"));
             Assert.That(exact.Name, Is.EqualTo("History Exact"));
             Assert.That(exact.Version, Is.EqualTo("1.0.0"));

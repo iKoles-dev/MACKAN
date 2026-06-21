@@ -1,4 +1,5 @@
 import XCTest
+import Combine
 
 @testable import MACKANKit
 
@@ -84,6 +85,86 @@ final class AppModelTests: XCTestCase {
         await refreshTask.value
         XCTAssertEqual(model.modules.map(\.identifier), ["SidecarOnlyMod"])
         XCTAssertNil(model.catalogLoadProgress)
+    }
+
+    func testRefreshHydratesCachedCatalogWhileFreshCatalogLoads() async {
+        let gate = ModuleListGate()
+        let cachedModule = module(identifier: "CachedMod", name: "Cached Mod")
+        let freshModule = module(identifier: "FreshMod", name: "Fresh Mod")
+        let snapshotStore = InMemoryModuleCatalogSnapshotStore(snapshots: [
+            "primary": ModuleCatalogSnapshot(
+                instanceId: "primary",
+                modules: [cachedModule],
+                moduleLabels: [
+                    ModuleLabelSummary(
+                        name: "Cached",
+                        instanceName: "primary",
+                        colorHex: "#88FF88",
+                        hide: false,
+                        holdVersion: false,
+                        ignoreMissingFiles: false,
+                        identifiers: ["CachedMod"]),
+                ],
+                manageableModuleLabels: [],
+                repositories: [
+                    RepositorySummary(
+                        name: "cached-default",
+                        url: "https://example.invalid/cached.tar.gz",
+                        priority: 1,
+                        isMirror: false,
+                        comment: "Cached repository"),
+                ],
+                launchCommands: ["./cached-ksp"],
+                defaultLaunchCommands: ["./cached-ksp"],
+                incompatibleLaunchModules: [],
+                savedAt: Date(timeIntervalSince1970: 1_000)),
+        ])
+        var sidecar = FakeSidecar(modulesByInstance: ["primary": [freshModule]])
+        sidecar.listModulesGate = gate
+        let model = AppModel(
+            sidecar: sidecar,
+            catalogSnapshotStore: snapshotStore)
+
+        let refreshTask = Task {
+            await model.refresh()
+        }
+        await gate.waitUntilEntered()
+
+        XCTAssertEqual(model.modules.map(\.identifier), ["CachedMod"])
+        XCTAssertEqual(model.selectedModuleID, "CachedMod")
+        XCTAssertEqual(model.moduleLabels.map(\.name), ["Cached"])
+        XCTAssertEqual(model.repositories.map(\.name), ["cached-default"])
+        XCTAssertEqual(model.launchCommands, ["./cached-ksp"])
+        XCTAssertEqual(model.catalogLoadProgress, AppModel.CatalogLoadProgress(
+            detail: "Reading CKAN registry and module metadata for the selected instance."))
+
+        await gate.release()
+        await refreshTask.value
+
+        XCTAssertEqual(model.modules.map(\.identifier), ["FreshMod"])
+        XCTAssertEqual(model.selectedModuleID, "FreshMod")
+        XCTAssertEqual(snapshotStore.snapshots["primary"]?.modules.map(\.identifier), ["FreshMod"])
+        XCTAssertNil(model.catalogLoadProgress)
+    }
+
+    func testCatalogLoadProgressClearsBeforeSelectedModuleDetailsFinishLoading() async {
+        let gate = ModuleDetailsGate()
+        let module = module(identifier: "FreshMod", name: "Fresh Mod")
+        var sidecar = FakeSidecar(modulesByInstance: ["primary": [module]])
+        sidecar.moduleDetailsGate = gate
+        let model = AppModel(sidecar: sidecar)
+
+        let refreshTask = Task {
+            await model.refresh()
+        }
+        await gate.waitUntilEntered()
+
+        XCTAssertEqual(model.modules.map(\.identifier), ["FreshMod"])
+        XCTAssertEqual(model.selectedModuleID, "FreshMod")
+        XCTAssertNil(model.catalogLoadProgress)
+
+        await gate.release()
+        await refreshTask.value
     }
 
     func testDiagnosticsReportIncludesCurrentMackanContext() async {
@@ -255,6 +336,7 @@ final class AppModelTests: XCTestCase {
 
     func testSelectInstanceReloadsModulesAndSelectedModuleDetails() async {
         let model = AppModel(sidecar: FakeSidecar())
+        model.filter = .all
 
         await model.refresh()
         await model.selectInstance("secondary")
@@ -267,6 +349,108 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.selectedModuleDetails?.abstract, "Secondary sidecar detail")
         XCTAssertEqual(model.repositories.map(\.name), ["secondary"])
         XCTAssertEqual(model.launchCommands, ["./KSP-Secondary.app/Contents/MacOS/KSP"])
+    }
+
+    func testSelectedModuleDetailsAreCachedAcrossRepeatedSelection() async {
+        let recorder = ModuleDetailsCallRecorder()
+        var sidecar = FakeSidecar()
+        sidecar.moduleDetailsCallRecorder = recorder
+        sidecar.modulesByInstance["primary"] = [
+            module(identifier: "FirstMod", name: "First Mod"),
+            module(identifier: "SecondMod", name: "Second Mod"),
+        ]
+        let model = AppModel(sidecar: sidecar)
+
+        await model.refresh()
+        var callCount = await recorder.callCount()
+        XCTAssertEqual(callCount, 1)
+
+        model.selectedModuleID = "SecondMod"
+        await model.refreshSelectedModuleDetails()
+        XCTAssertEqual(model.selectedModuleDetails?.module.identifier, "SecondMod")
+        callCount = await recorder.callCount()
+        XCTAssertEqual(callCount, 2)
+
+        model.selectedModuleID = "FirstMod"
+        await model.refreshSelectedModuleDetails()
+        XCTAssertEqual(model.selectedModuleDetails?.module.identifier, "FirstMod")
+        callCount = await recorder.callCount()
+        XCTAssertEqual(callCount, 2)
+    }
+
+    func testSelectedModuleDetailsImmediatelyFollowSelectionWhileFullDetailsLoad() async {
+        let gate = ModuleDetailsGate()
+        let firstModule = module(
+            identifier: "FirstMod",
+            name: "First Mod",
+            abstract: "First summary")
+        let secondModule = module(
+            identifier: "SecondMod",
+            name: "Second Mod",
+            latestVersion: "2.0.0",
+            tags: ["parts"],
+            abstract: "Second summary",
+            description: "Second full summary",
+            downloadSize: 54_600_000,
+            installSize: 19_700_000)
+        var sidecar = FakeSidecar(modulesByInstance: ["primary": [firstModule, secondModule]])
+        sidecar.moduleDetailsGate = gate
+        let model = AppModel(
+            sidecar: sidecar,
+            instances: primaryInstances(),
+            modules: [firstModule, secondModule])
+        model.selectedModuleDetails = ModuleDetails(
+            instanceId: "primary",
+            module: firstModule,
+            abstract: "Loaded first details",
+            description: "Full first details",
+            releaseStatus: "stable",
+            kind: "package",
+            releaseDate: "2024-01-02T03:04:05.0000000Z",
+            downloadSize: 1024,
+            installSize: 2048,
+            resources: [ModuleResource(label: "Homepage", url: "https://example.invalid/first")],
+            tags: ["first"])
+
+        model.selectedModuleID = "SecondMod"
+        let refreshTask = Task {
+            await model.refreshSelectedModuleDetails()
+        }
+        await gate.waitUntilEntered()
+
+        XCTAssertEqual(model.selectedModuleDetails?.module.identifier, "SecondMod")
+        XCTAssertEqual(model.selectedModuleDetails?.module.name, "Second Mod")
+        XCTAssertEqual(model.selectedModuleDetails?.abstract, "Second summary")
+        XCTAssertEqual(model.selectedModuleDetails?.description, "Second full summary")
+        XCTAssertEqual(model.selectedModuleDetails?.downloadSize, 54_600_000)
+        XCTAssertEqual(model.selectedModuleDetails?.installSize, 19_700_000)
+        XCTAssertEqual(model.selectedModuleDetails?.tags, ["parts"])
+
+        await gate.release()
+        await refreshTask.value
+
+        XCTAssertEqual(model.selectedModuleDetails?.module.identifier, "SecondMod")
+        XCTAssertEqual(model.selectedModuleDetails?.abstract, "A real sidecar detail")
+        XCTAssertEqual(model.selectedModuleDetails?.resources.first?.label, "Homepage")
+    }
+
+    func testForcedSelectedModuleDetailsRefreshBypassesCache() async {
+        let recorder = ModuleDetailsCallRecorder()
+        var sidecar = FakeSidecar()
+        sidecar.moduleDetailsCallRecorder = recorder
+        let model = AppModel(sidecar: sidecar)
+
+        await model.refresh()
+        var callCount = await recorder.callCount()
+        XCTAssertEqual(callCount, 1)
+
+        await model.refreshSelectedModuleDetails()
+        callCount = await recorder.callCount()
+        XCTAssertEqual(callCount, 1)
+
+        await model.refreshSelectedModuleDetails(force: true)
+        callCount = await recorder.callCount()
+        XCTAssertEqual(callCount, 2)
     }
 
     func testSetDefaultInstanceUpdatesInstancesAndSelection() async throws {
@@ -353,6 +537,7 @@ final class AppModelTests: XCTestCase {
 
     func testRenameInstanceUpdatesInstancesAndSelectedInstanceID() async throws {
         let model = AppModel(sidecar: FakeSidecar())
+        model.filter = .all
 
         await model.refresh()
         await model.selectInstance("secondary")
@@ -366,6 +551,7 @@ final class AppModelTests: XCTestCase {
 
     func testAddInstanceUpdatesInstancesAndSelectsAddedInstance() async throws {
         let model = AppModel(sidecar: FakeSidecar())
+        model.filter = .all
 
         await model.refresh()
         try await model.addInstance(path: "/Games/KSP-New", name: "New KSP")
@@ -378,6 +564,7 @@ final class AppModelTests: XCTestCase {
 
     func testCloneInstanceUpdatesInstancesAndSelectsClone() async throws {
         let model = AppModel(sidecar: FakeSidecar())
+        model.filter = .all
 
         await model.refresh()
         try await model.cloneInstance(
@@ -695,6 +882,7 @@ final class AppModelTests: XCTestCase {
     func testMaintenancePaneSelectionUsesPersistentMainContentRouteUntilInstanceSelection() async {
         let model = AppModel(sidecar: FakeSidecar())
 
+        await model.refresh()
         XCTAssertEqual(model.mainContentRoute, .catalog)
 
         model.showMaintenancePane(.unmanagedFiles)
@@ -704,6 +892,21 @@ final class AppModelTests: XCTestCase {
         await model.selectInstance("secondary")
 
         XCTAssertEqual(model.mainContentRoute, .catalog)
+    }
+
+    func testSelectInstanceIgnoresUnknownSidebarSelectionIdentifiers() async {
+        let model = AppModel(sidecar: FakeSidecar())
+
+        await model.refresh()
+        model.showMaintenancePane(.unmanagedFiles)
+        await model.selectInstance("history")
+
+        XCTAssertEqual(model.selectedInstanceID, "primary")
+        XCTAssertEqual(model.mainContentRoute, .maintenance(.unmanagedFiles))
+        XCTAssertEqual(model.healthState, .ready(SidecarHealth(
+            status: "ok",
+            protocolVersion: "1",
+            ckanVersion: "v1.36.5-test")))
     }
 
     func testMaintenancePaneSheetPresentationIsSuppressedByPersistentPane() async throws {
@@ -728,6 +931,23 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.mainContentRoute, .catalog)
         XCTAssertNil(model.unmanagedFilesResult)
         XCTAssertFalse(model.shouldPresentMaintenanceSheet(for: .unmanagedFiles))
+    }
+
+    func testLeavingInlineMaintenancePaneClearsResultBeforeLegacySheetCanPresent() async throws {
+        let model = AppModel(sidecar: FakeSidecar())
+
+        await model.refresh()
+        model.showMaintenancePane(.downloadStatistics)
+        try await model.loadMaintenancePane(.downloadStatistics)
+
+        XCTAssertNotNil(model.downloadStatisticsResult)
+        XCTAssertFalse(model.shouldPresentMaintenanceSheet(for: .downloadStatistics))
+
+        model.showCatalog()
+
+        XCTAssertEqual(model.mainContentRoute, .catalog)
+        XCTAssertNil(model.downloadStatisticsResult)
+        XCTAssertFalse(model.shouldPresentMaintenanceSheet(for: .downloadStatistics))
     }
 
     func testMaintenancePaneLoaderDispatchesThroughSingleModelBoundary() async throws {
@@ -758,7 +978,12 @@ final class AppModelTests: XCTestCase {
     }
 
     func testBuiltInSavedSearchAppliesCatalogFilterAndClearsAdHocSearch() {
-        let model = AppModel(sidecar: FakeSidecar())
+        let model = AppModel(
+            sidecar: FakeSidecar(),
+            modules: [
+                module(identifier: "AvailableMod", name: "Available Mod", status: .available),
+                module(identifier: "UpgradeableMod", name: "Upgradeable Mod", status: .upgradable, isInstalled: true, hasUpdate: true),
+            ])
 
         model.searchText = "label:utility"
         model.tagFilter = "visual"
@@ -770,6 +995,9 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.filter, .upgradable)
         XCTAssertEqual(model.searchText, "")
         XCTAssertNil(model.tagFilter)
+        XCTAssertEqual(model.filteredModules.map(\.identifier), ["UpgradeableMod"])
+        XCTAssertEqual(model.selectedModuleID, "UpgradeableMod")
+        XCTAssertNil(model.catalogLoadProgress)
     }
 
     func testScanGameDataStoresResultAndReloadsInstanceState() async throws {
@@ -786,10 +1014,15 @@ final class AppModelTests: XCTestCase {
         XCTAssertNil(model.maintenanceError)
     }
 
-    func testLoadUnmanagedFilesStoresResultAndReloadsInstanceState() async throws {
-        let model = AppModel(sidecar: FakeSidecar())
+    func testLoadUnmanagedFilesStoresResultWithoutReloadingCatalog() async throws {
+        let recorder = ModuleListOperationRecorder()
+        var sidecar = FakeSidecar()
+        sidecar.moduleListStartRecorder = recorder
+        let model = AppModel(sidecar: sidecar)
 
         await model.refresh()
+        let recordedCatalogLoadsBeforeUnmanagedFiles = await recorder.recordedOperationIDs()
+
         try await model.loadUnmanagedFiles()
 
         XCTAssertEqual(model.unmanagedFilesResult?.instanceId, "primary")
@@ -797,7 +1030,8 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.unmanagedFilesResult?.files.map(\.identifier), ["ManualPlugin", "MakingHistory-DLC"])
         XCTAssertEqual(model.unmanagedFilesResult?.files[0].path, "GameData/Manual/ManualPlugin.dll")
         XCTAssertEqual(model.unmanagedFilesResult?.files[1].version, "1.12.1 (unmanaged)")
-        XCTAssertEqual(model.modules.map(\.identifier), ["SidecarOnlyMod"])
+        let recordedCatalogLoadsAfterUnmanagedFiles = await recorder.recordedOperationIDs()
+        XCTAssertEqual(recordedCatalogLoadsAfterUnmanagedFiles, recordedCatalogLoadsBeforeUnmanagedFiles)
         XCTAssertNil(model.maintenanceError)
     }
 
@@ -840,10 +1074,23 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.installationHistoryResult?.instanceId, "primary")
         XCTAssertEqual(model.installationHistoryResult?.entries.count, 1)
         XCTAssertEqual(model.installationHistoryResult?.entries[0].fileName, "installed-Primary_KSP-2026-05-31_10-00-00.ckan")
-        XCTAssertEqual(model.installationHistoryResult?.entries[0].modules.map(\.identifier), ["ModuleManager"])
-        XCTAssertEqual(model.installationHistoryResult?.entries[0].modules[0].version, "4.2.3")
-        XCTAssertEqual(model.installationHistoryResult?.entries[0].modules[0].isInstalled, false)
-        XCTAssertEqual(model.installationHistoryResult?.entries[0].modules[0].isAvailable, true)
+        XCTAssertEqual(model.installationHistoryResult?.entries[0].moduleCount, 1)
+        XCTAssertNil(model.selectedInstallationHistoryEntry)
+        XCTAssertNil(model.maintenanceError)
+    }
+
+    func testLoadInstallationHistoryEntryStoresSelectedEntry() async throws {
+        let model = AppModel(sidecar: FakeSidecar())
+
+        await model.refresh()
+        try await model.loadInstallationHistory()
+        try await model.loadInstallationHistoryEntry(fileName: "installed-Primary_KSP-2026-05-31_10-00-00.ckan")
+
+        XCTAssertEqual(model.selectedInstallationHistoryEntry?.fileName, "installed-Primary_KSP-2026-05-31_10-00-00.ckan")
+        XCTAssertEqual(model.selectedInstallationHistoryEntry?.modules.map(\.identifier), ["ModuleManager"])
+        XCTAssertEqual(model.selectedInstallationHistoryEntry?.modules[0].version, "4.2.3")
+        XCTAssertEqual(model.selectedInstallationHistoryEntry?.modules[0].isInstalled, false)
+        XCTAssertEqual(model.selectedInstallationHistoryEntry?.modules[0].isAvailable, true)
         XCTAssertNil(model.maintenanceError)
     }
 
@@ -956,6 +1203,24 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.downloadStatisticsResult?.hosts[0].bytes, 1536)
         XCTAssertEqual(model.downloadStatisticsResult?.hosts[0].display, "1.5 KiB")
         XCTAssertNil(model.maintenanceError)
+    }
+
+    func testLoadDownloadStatisticsFailureUsesDownloadStatisticsErrorTitle() async {
+        let model = AppModel(sidecar: FakeSidecar(
+            downloadStatisticsError: .rpcError(
+                code: -32000,
+                message: "An item with the same key has already been added.")))
+
+        await model.refresh()
+
+        do {
+            try await model.loadDownloadStatistics()
+            XCTFail("Expected download statistics to fail")
+        } catch {
+            XCTAssertEqual(model.maintenanceError, "An item with the same key has already been added.")
+            XCTAssertEqual(model.maintenanceErrorTitle, "Download Statistics failed")
+            XCTAssertNil(model.downloadStatisticsResult)
+        }
     }
 
     func testLoadCacheInfoStoresResult() async throws {
@@ -1368,6 +1633,17 @@ final class AppModelTests: XCTestCase {
         XCTAssertNil(model.selectedModule)
     }
 
+    func testInitialCatalogStateShowsAvailableModulesAndSelectsFirstVisibleModule() {
+        let installed = module(identifier: "InstalledMod", name: "Installed Mod", status: .installed, isInstalled: true)
+        let blocked = module(identifier: "BlockedMod", name: "Blocked Mod", status: .incompatible, isCompatible: false)
+        let available = module(identifier: "AvailableMod", name: "Available Mod", status: .available)
+        let model = AppModel(sidecar: FakeSidecar(), modules: [installed, blocked, available])
+
+        XCTAssertEqual(model.filter, .available)
+        XCTAssertEqual(model.filteredModules.map(\.identifier), ["AvailableMod"])
+        XCTAssertEqual(model.selectedModuleID, "AvailableMod")
+    }
+
     func testCatalogFiltersCoverWindowsSmartFilterStates() {
         let model = AppModel(
             sidecar: FakeSidecar(),
@@ -1392,6 +1668,28 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(identifiers(in: model, filter: .replaceable), ["ReplaceableMod"])
     }
 
+    func testChangingCatalogFilterSelectsFirstVisibleModuleWhenCurrentSelectionIsHidden() {
+        let model = AppModel(
+            sidecar: FakeSidecar(),
+            modules: [
+                module(identifier: "AvailableMod", name: "Available Mod", status: .available),
+                module(identifier: "CachedMod", name: "Cached Mod", status: .cached, isCached: true),
+                module(identifier: "InstalledMod", name: "Installed Mod", status: .installed, isInstalled: true),
+            ])
+
+        XCTAssertEqual(model.selectedModuleID, "AvailableMod")
+
+        model.filter = .installed
+
+        XCTAssertEqual(model.filteredModules.map(\.identifier), ["InstalledMod"])
+        XCTAssertEqual(model.selectedModuleID, "InstalledMod")
+
+        model.filter = .cached
+
+        XCTAssertEqual(model.filteredModules.map(\.identifier), ["CachedMod"])
+        XCTAssertEqual(model.selectedModuleID, "CachedMod")
+    }
+
     func testCatalogSearchMatchesMultipleTokensAcrossMetadata() {
         let model = AppModel(
             sidecar: FakeSidecar(),
@@ -1413,6 +1711,7 @@ final class AppModelTests: XCTestCase {
                     contents: ["GameData/ModuleManager.4.2.3.dll"],
                     isInstalled: true),
             ])
+        model.filter = .all
 
         model.searchText = "GPL scatterer"
         XCTAssertEqual(model.filteredModules.map(\.identifier), ["Scatterer"])
@@ -1569,6 +1868,7 @@ final class AppModelTests: XCTestCase {
         let model = AppModel(
             sidecar: FakeSidecar(),
             modules: advancedSearchModules())
+        model.filter = .all
 
         model.searchText = "@black lic:GPL tag:visual rec:Environmental"
         XCTAssertEqual(model.filteredModules.map(\.identifier), ["Scatterer"])
@@ -1584,6 +1884,7 @@ final class AppModelTests: XCTestCase {
         let model = AppModel(
             sidecar: FakeSidecar(),
             modules: advancedSearchModules())
+        model.filter = .all
 
         model.searchText = "identifier:ModuleManager"
         XCTAssertEqual(model.filteredModules.map(\.identifier), ["ModuleManager"])
@@ -1596,6 +1897,7 @@ final class AppModelTests: XCTestCase {
         let model = AppModel(
             sidecar: FakeSidecar(),
             modules: advancedSearchModules())
+        model.filter = .all
 
         model.searchText = "is:installed not:cached"
         XCTAssertEqual(model.filteredModules.map(\.identifier), ["ReplaceableMod", "Scatterer"])
@@ -1611,6 +1913,71 @@ final class AppModelTests: XCTestCase {
 
         model.searchText = "-tag:visual -conf:JNSQ"
         XCTAssertEqual(model.filteredModules.map(\.identifier), ["ModuleManager", "ReplaceableMod"])
+    }
+
+    func testKeyboardSelectionNavigationUsesFilteredCatalogOrder() {
+        let model = AppModel(
+            sidecar: FakeSidecar(),
+            modules: [
+                module(identifier: "InstalledMod", name: "Installed Mod", status: .installed, isInstalled: true),
+                module(identifier: "Charlie", name: "Charlie", status: .available),
+                module(identifier: "Alpha", name: "Alpha", status: .available),
+                module(identifier: "BlockedMod", name: "Blocked Mod", status: .incompatible, isCompatible: false),
+            ])
+
+        XCTAssertEqual(model.filteredModules.map(\.identifier), ["Alpha", "Charlie"])
+        XCTAssertEqual(model.selectedModuleID, "Alpha")
+
+        model.selectNextFilteredModule()
+        XCTAssertEqual(model.selectedModuleID, "Charlie")
+
+        model.selectNextFilteredModule()
+        XCTAssertEqual(model.selectedModuleID, "Charlie")
+
+        model.selectPreviousFilteredModule()
+        XCTAssertEqual(model.selectedModuleID, "Alpha")
+
+        model.selectedModuleID = "InstalledMod"
+        model.selectNextFilteredModule()
+        XCTAssertEqual(model.selectedModuleID, "Alpha")
+    }
+
+    func testFilteredModulesAreStoredStateUnaffectedBySelectionChanges() {
+        let model = AppModel(
+            sidecar: FakeSidecar(),
+            modules: [
+                module(identifier: "Charlie", name: "Charlie", status: .available),
+                module(identifier: "Alpha", name: "Alpha", status: .available),
+                module(identifier: "InstalledMod", name: "Installed Mod", status: .installed, isInstalled: true),
+            ])
+        var publishedModuleIDs: [[String]] = []
+        let cancellable = model.$filteredModules
+            .dropFirst()
+            .sink { modules in
+                publishedModuleIDs.append(modules.map(\.identifier))
+            }
+
+        XCTAssertEqual(model.filteredModules.map(\.identifier), ["Alpha", "Charlie"])
+
+        model.selectedModuleID = "Charlie"
+
+        XCTAssertTrue(publishedModuleIDs.isEmpty)
+
+        model.searchText = "Alpha"
+
+        XCTAssertEqual(model.filteredModules.map(\.identifier), ["Alpha"])
+        XCTAssertEqual(publishedModuleIDs, [["Alpha"]])
+        withExtendedLifetime(cancellable) {}
+    }
+
+    func testBuiltInSavedSearchOrderStartsWithAvailable() {
+        XCTAssertEqual(ModuleFilter.builtInSavedSearches, [
+            .available,
+            .upgradable,
+            .installed,
+            .cached,
+            .incompatible,
+        ])
     }
 
     func testSavedCatalogSearchLoadsSavesAndAppliesState() {
@@ -1697,14 +2064,14 @@ final class AppModelTests: XCTestCase {
 
         XCTAssertTrue(model.savedSearches.isEmpty)
         XCTAssertEqual(model.searchText, "")
-        XCTAssertEqual(model.filter, .all)
+        XCTAssertEqual(model.filter, .available)
         XCTAssertNil(model.tagFilter)
         XCTAssertEqual(catalogStateStore.catalogState?.searchText, "")
-        XCTAssertEqual(catalogStateStore.catalogState?.filter, .all)
+        XCTAssertEqual(catalogStateStore.catalogState?.filter, .available)
         XCTAssertNil(catalogStateStore.catalogState?.tagFilter)
     }
 
-    func testCatalogStatePersistsAndLoadsAcrossRelaunches() {
+    func testCatalogStatePersistsSortsButLaunchesIntoAvailableSearch() {
         let store = InMemoryModuleCatalogStateStore()
         let firstModel = AppModel(sidecar: FakeSidecar(), catalogStateStore: store)
 
@@ -1729,9 +2096,9 @@ final class AppModelTests: XCTestCase {
 
         let relaunchedModel = AppModel(sidecar: FakeSidecar(), catalogStateStore: store)
 
-        XCTAssertEqual(relaunchedModel.searchText, "tag:visual")
-        XCTAssertEqual(relaunchedModel.filter, .compatible)
-        XCTAssertEqual(relaunchedModel.tagFilter, "visual")
+        XCTAssertEqual(relaunchedModel.searchText, "")
+        XCTAssertEqual(relaunchedModel.filter, .available)
+        XCTAssertNil(relaunchedModel.tagFilter)
         XCTAssertEqual(relaunchedModel.moduleSort, .downloadCount)
         XCTAssertFalse(relaunchedModel.moduleSortAscending)
         XCTAssertEqual(relaunchedModel.secondaryModuleSortCriteria, [
@@ -1819,6 +2186,7 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.moduleLabels.map(\.name), ["Favourites"])
         XCTAssertEqual(model.labels(for: "ModuleManager").map(\.name), ["Favourites"])
 
+        model.filter = .all
         model.searchText = "label:Favourites"
         XCTAssertEqual(model.filteredModules.map(\.identifier), ["ModuleManager"])
 
@@ -1833,6 +2201,7 @@ final class AppModelTests: XCTestCase {
             sidecar: FakeSidecar(modulesByInstance: ["primary": advancedSearchModules()]))
 
         await model.refresh()
+        model.filter = .all
 
         model.searchText = "desc:VisualEnhancements"
         XCTAssertEqual(model.filteredModules.map(\.identifier), ["Scatterer"])
@@ -2084,6 +2453,148 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.pendingChangeSet?.changes.map(\.identifier), ["SidecarOnlyMod", "DependencyMod"])
         XCTAssertEqual(model.pendingChangeSet?.changes.first?.action, "install")
         XCTAssertEqual(model.pendingChangeSet?.changes.last?.reasons, ["Dependency of SidecarOnlyMod"])
+    }
+
+    func testCatalogRefreshCompletingAfterStagingPreservesPendingRemove() async throws {
+        let gate = ModuleListGate()
+        let installed = module(
+            identifier: "InstalledMod",
+            name: "Installed Mod",
+            status: .installed,
+            installedVersion: "1.0.0",
+            isInstalled: true)
+        let snapshotStore = InMemoryModuleCatalogSnapshotStore(snapshots: [
+            "primary": ModuleCatalogSnapshot(
+                instanceId: "primary",
+                modules: [installed],
+                moduleLabels: [],
+                manageableModuleLabels: [],
+                repositories: [],
+                launchCommands: [],
+                defaultLaunchCommands: [],
+                incompatibleLaunchModules: [],
+                savedAt: Date())
+        ])
+        let sidecar = FakeSidecar(
+            modulesByInstance: ["primary": [installed]],
+            listModulesGate: gate,
+            expectedResolveInstall: [],
+            expectedResolveRemove: ["InstalledMod"])
+        let model = AppModel(sidecar: sidecar, catalogSnapshotStore: snapshotStore)
+
+        let refreshTask = Task {
+            await model.refresh()
+        }
+        await gate.waitUntilEntered()
+        model.stageRemove("InstalledMod")
+
+        await gate.release()
+        await refreshTask.value
+        try await model.resolveChanges()
+
+        XCTAssertEqual(model.stagedAction(for: "InstalledMod"), .remove)
+        XCTAssertEqual(model.pendingChangeSet?.changes.map(\.identifier), ["InstalledMod"])
+        XCTAssertEqual(model.pendingChangeSet?.changes.map(\.action), ["remove"])
+    }
+
+    func testStaleInstanceStateLoadDoesNotOverwriteNewerSelection() async throws {
+        let primaryGate = ModuleListGate()
+        let primaryModule = module(identifier: "PrimaryOnly", name: "Primary Only")
+        let secondaryModule = module(identifier: "SecondaryOnly", name: "Secondary Only")
+        var sidecar = FakeSidecar(
+            modulesByInstance: [
+                "primary": [primaryModule],
+                "secondary": [secondaryModule],
+            ])
+        sidecar.moduleListGatesByInstance = ["primary": primaryGate]
+        let model = AppModel(sidecar: sidecar)
+
+        let primarySelectionTask = Task {
+            await model.selectInstance("primary")
+        }
+        await primaryGate.waitUntilEntered()
+
+        await model.selectInstance("secondary")
+
+        XCTAssertEqual(model.selectedInstanceID, "secondary")
+        XCTAssertEqual(model.modules.map(\.identifier), ["SecondaryOnly"])
+        XCTAssertEqual(model.selectedModuleID, "SecondaryOnly")
+
+        await primaryGate.release()
+        await primarySelectionTask.value
+
+        XCTAssertEqual(model.selectedInstanceID, "secondary")
+        XCTAssertEqual(model.modules.map(\.identifier), ["SecondaryOnly"])
+        XCTAssertEqual(model.selectedModuleID, "SecondaryOnly")
+    }
+
+    func testStaleRunningModuleListOperationIsCancelled() async throws {
+        let startRecorder = ModuleListOperationRecorder()
+        let cancelRecorder = ModuleListOperationRecorder()
+        let secondaryModule = module(identifier: "SecondaryOnly", name: "Secondary Only")
+        var sidecar = FakeSidecar(
+            modulesByInstance: [
+                "primary": [module(identifier: "PrimaryOnly", name: "Primary Only")],
+                "secondary": [secondaryModule],
+            ])
+        sidecar.moduleListStartStatusByInstance = ["primary": "running"]
+        sidecar.moduleListStartRecorder = startRecorder
+        sidecar.moduleListCancelRecorder = cancelRecorder
+        let model = AppModel(sidecar: sidecar)
+
+        let primarySelectionTask = Task {
+            await model.selectInstance("primary")
+        }
+        await startRecorder.waitUntilRecorded()
+
+        await model.selectInstance("secondary")
+        await primarySelectionTask.value
+
+        let cancelledOperationIDs = await cancelRecorder.recordedOperationIDs()
+        XCTAssertEqual(cancelledOperationIDs, ["module-list-op-primary"])
+        XCTAssertEqual(model.selectedInstanceID, "secondary")
+        XCTAssertEqual(model.modules.map(\.identifier), ["SecondaryOnly"])
+    }
+
+    func testResolveChangesUsesForegroundPreviewSidecarWhenProvided() async throws {
+        let backgroundSidecar = FakeSidecar(
+            changeSetError: .rpcError(code: -32000, message: "Background sidecar is busy"))
+        let previewSidecar = FakeSidecar()
+        let model = AppModel(
+            sidecar: backgroundSidecar,
+            previewSidecar: previewSidecar)
+
+        await model.refresh()
+        model.stageInstall("SidecarOnlyMod")
+        try await model.resolveChanges()
+
+        XCTAssertEqual(model.pendingChangeSet?.changes.map(\.identifier), ["SidecarOnlyMod", "DependencyMod"])
+        XCTAssertNil(model.changeSetError)
+    }
+
+    func testStaleChangePreviewDoesNotOverwriteNewerStagedActions() async throws {
+        let gate = ChangeSetGate()
+        var previewSidecar = FakeSidecar()
+        previewSidecar.changeSetGate = gate
+        let model = AppModel(
+            sidecar: FakeSidecar(),
+            previewSidecar: previewSidecar)
+
+        await model.refresh()
+        model.stageInstall("SidecarOnlyMod")
+        let previewTask = Task {
+            try await model.resolveChanges()
+        }
+        await gate.waitUntilEntered()
+
+        model.clearStagedChange("SidecarOnlyMod")
+        model.stageInstall("OtherMod")
+
+        await gate.release()
+        try await previewTask.value
+
+        XCTAssertNil(model.pendingChangeSet)
+        XCTAssertEqual(model.stagedAction(for: "OtherMod"), .install)
     }
 
     func testResolveChangesLoadsPreviewForStagedReplace() async throws {
@@ -2852,6 +3363,18 @@ final class AppModelTests: XCTestCase {
     }
 }
 
+actor ModuleDetailsCallRecorder {
+    private(set) var calls: [(instanceId: String, identifier: String)] = []
+
+    func callCount() -> Int {
+        calls.count
+    }
+
+    func record(instanceId: String, identifier: String) {
+        calls.append((instanceId, identifier))
+    }
+}
+
 @MainActor
 private final class RecordingInstanceDirectoryOpener: InstanceDirectoryOpening {
     private(set) var revealedURLs: [URL] = []
@@ -2909,6 +3432,22 @@ private final class InMemoryModuleCatalogStateStore: ModuleCatalogStateStoring {
     }
 }
 
+private final class InMemoryModuleCatalogSnapshotStore: ModuleCatalogSnapshotStoring {
+    var snapshots: [String: ModuleCatalogSnapshot]
+
+    init(snapshots: [String: ModuleCatalogSnapshot] = [:]) {
+        self.snapshots = snapshots
+    }
+
+    func loadSnapshot(for instanceID: String) -> ModuleCatalogSnapshot? {
+        snapshots[instanceID]
+    }
+
+    func saveSnapshot(_ snapshot: ModuleCatalogSnapshot) {
+        snapshots[snapshot.instanceId] = snapshot
+    }
+}
+
 actor ModuleListGate {
     private var entered = false
     private var released = false
@@ -2925,6 +3464,98 @@ actor ModuleListGate {
     }
 
     func waitBeforeReturningModules() async {
+        entered = true
+        enteredContinuation?.resume()
+        enteredContinuation = nil
+        if released {
+            return
+        }
+        await withCheckedContinuation { continuation in
+            releaseContinuation = continuation
+        }
+    }
+
+    func release() {
+        released = true
+        releaseContinuation?.resume()
+        releaseContinuation = nil
+    }
+}
+
+actor ChangeSetGate {
+    private var entered = false
+    private var released = false
+    private var enteredContinuation: CheckedContinuation<Void, Never>?
+    private var releaseContinuation: CheckedContinuation<Void, Never>?
+
+    func waitUntilEntered() async {
+        if entered {
+            return
+        }
+        await withCheckedContinuation { continuation in
+            enteredContinuation = continuation
+        }
+    }
+
+    func waitBeforeResolvingChanges() async {
+        entered = true
+        enteredContinuation?.resume()
+        enteredContinuation = nil
+        if released {
+            return
+        }
+        await withCheckedContinuation { continuation in
+            releaseContinuation = continuation
+        }
+    }
+
+    func release() {
+        released = true
+        releaseContinuation?.resume()
+        releaseContinuation = nil
+    }
+}
+
+actor ModuleListOperationRecorder {
+    private var operationIDs: [String] = []
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func record(operationID: String) {
+        operationIDs.append(operationID)
+        waiters.forEach { $0.resume() }
+        waiters.removeAll()
+    }
+
+    func waitUntilRecorded() async {
+        if !operationIDs.isEmpty {
+            return
+        }
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    func recordedOperationIDs() -> [String] {
+        operationIDs
+    }
+}
+
+actor ModuleDetailsGate {
+    private var entered = false
+    private var released = false
+    private var enteredContinuation: CheckedContinuation<Void, Never>?
+    private var releaseContinuation: CheckedContinuation<Void, Never>?
+
+    func waitUntilEntered() async {
+        if entered {
+            return
+        }
+        await withCheckedContinuation { continuation in
+            enteredContinuation = continuation
+        }
+    }
+
+    func waitBeforeReturningDetails() async {
         entered = true
         enteredContinuation?.resume()
         enteredContinuation = nil
@@ -2964,13 +3595,21 @@ struct FakeSidecar: SidecarProviding {
     var repositoryStatusOperationStatus = "completed"
     var repositoryRefreshError: String?
     var repositoryRefreshErrorDetails: SidecarErrorDetails?
+    var downloadStatisticsError: SidecarClientError?
     var incompatibleLaunchModules: [LaunchWarningModule] = []
     var cacheInfoPath = "/Users/test/Library/Caches/CKAN/downloads"
     var modulesByInstance: [String: [ModuleSummary]] = [:]
+    var moduleDetailsCallRecorder: ModuleDetailsCallRecorder?
+    var moduleDetailsGate: ModuleDetailsGate?
     var labelsByInstance: [String: [ModuleLabelSummary]] = [:]
     var manageableLabelsByInstance: [String: [ModuleLabelSummary]] = [:]
     var availableRepositoriesByInstance: [String: [RepositorySummary]] = [:]
     var listModulesGate: ModuleListGate?
+    var moduleListGatesByInstance: [String: ModuleListGate] = [:]
+    var moduleListStartStatusByInstance: [String: String] = [:]
+    var moduleListStartRecorder: ModuleListOperationRecorder?
+    var moduleListCancelRecorder: ModuleListOperationRecorder?
+    var changeSetGate: ChangeSetGate?
     var toggleLabelsResult: SidecarLabelsResult?
     var upsertLabelsResult: SidecarLabelsResult?
     var deleteLabelsResult: SidecarLabelsResult?
@@ -2979,6 +3618,7 @@ struct FakeSidecar: SidecarProviding {
     var expectedImportDeleteImportedFiles = false
     var expectedImportPreviewBeforeInstall = false
     var expectedResolveInstall = ["SidecarOnlyMod"]
+    var expectedResolveRemove: [String] = []
     var expectedResolveInstallVersions: [VersionedModuleSelection] = []
     var changeSetSuppressRecommendations = false
     var launchGameError: SidecarClientError?
@@ -3219,8 +3859,8 @@ struct FakeSidecar: SidecarProviding {
     }
 
     func listModules(instanceId: String?) async throws -> SidecarModulesResult {
-        await listModulesGate?.waitBeforeReturningModules()
         let instanceId = instanceId ?? "primary"
+        await moduleListGate(for: instanceId)?.waitBeforeReturningModules()
         return SidecarModulesResult(
             instanceId: instanceId,
             modules: modulesByInstance[instanceId] ?? [
@@ -3229,12 +3869,17 @@ struct FakeSidecar: SidecarProviding {
     }
 
     func startListModules(instanceId: String?) async throws -> ModuleListOperationResult {
-        await listModulesGate?.waitBeforeReturningModules()
         let instanceId = instanceId ?? "primary"
+        await moduleListGate(for: instanceId)?.waitBeforeReturningModules()
+        let status = moduleListStartStatusByInstance[instanceId] ?? "completed"
+        let operationId = moduleListStartStatusByInstance[instanceId] == nil
+            ? "module-list-op"
+            : "module-list-op-\(instanceId)"
+        await moduleListStartRecorder?.record(operationID: operationId)
         return ModuleListOperationResult(
-            operationId: "module-list-op",
+            operationId: operationId,
             instanceId: instanceId,
-            status: "completed",
+            status: status,
             modules: modulesByInstance[instanceId] ?? [
                 summary(for: instanceId),
             ],
@@ -3263,7 +3908,10 @@ struct FakeSidecar: SidecarProviding {
     }
 
     func cancelModuleList(operationId: String) async throws -> ModuleListOperationResult {
-        XCTAssertEqual(operationId, "module-list-op")
+        if moduleListCancelRecorder == nil {
+            XCTAssertEqual(operationId, "module-list-op")
+        }
+        await moduleListCancelRecorder?.record(operationID: operationId)
         return ModuleListOperationResult(
             operationId: operationId,
             instanceId: "primary",
@@ -3325,6 +3973,8 @@ struct FakeSidecar: SidecarProviding {
         let module = modulesByInstance[instanceId]?.first { $0.identifier == identifier }
             ?? summary(for: instanceId)
         XCTAssertEqual(identifier, module.identifier)
+        await moduleDetailsCallRecorder?.record(instanceId: instanceId, identifier: identifier)
+        await moduleDetailsGate?.waitBeforeReturningDetails()
         return ModuleDetails(
             instanceId: instanceId,
             module: module,
@@ -3520,11 +4170,32 @@ struct FakeSidecar: SidecarProviding {
                 message: "Registry is locked",
                 lockfilePath: "/Games/KSP/CKAN/registry.locked")
         }
+        await changeSetGate?.waitBeforeResolvingChanges()
 
         XCTAssertEqual(instanceId, "primary")
-        XCTAssertTrue(remove.isEmpty)
+        XCTAssertEqual(remove, expectedResolveRemove)
         XCTAssertTrue(upgrade.isEmpty)
         XCTAssertEqual(installVersions, expectedResolveInstallVersions)
+
+        if !expectedResolveRemove.isEmpty {
+            XCTAssertTrue(install.isEmpty)
+            XCTAssertTrue(replace.isEmpty)
+            return ChangeSetResult(
+                instanceId: instanceId,
+                changes: expectedResolveRemove.map { identifier in
+                    ChangeSummary(
+                        identifier: identifier,
+                        name: "Installed Mod",
+                        action: "remove",
+                        fromVersion: "1.0.0",
+                        toVersion: nil,
+                        reasons: ["User requested"],
+                        isUserRequested: true,
+                        isAuto: false)
+                },
+                conflicts: [],
+                conflictDescriptions: [])
+        }
 
         if replace == ["ReplaceableMod"] {
             XCTAssertTrue(install.isEmpty)
@@ -3643,6 +4314,10 @@ struct FakeSidecar: SidecarProviding {
                 ]
                 : [],
             suppressRecommendations: changeSetSuppressRecommendations)
+    }
+
+    private func moduleListGate(for instanceId: String) -> ModuleListGate? {
+        moduleListGatesByInstance[instanceId] ?? listModulesGate
     }
 
     func applyChanges(
@@ -4032,19 +4707,28 @@ struct FakeSidecar: SidecarProviding {
         return InstallationHistoryResult(
             instanceId: instanceId,
             entries: [
-                InstallationHistoryEntry(
+                InstallationHistoryEntrySummary(
                     fileName: "installed-Primary_KSP-2026-05-31_10-00-00.ckan",
                     savedAt: "2026-05-31T10:00:00.0000000Z",
-                    modules: [
-                        InstallationHistoryModule(
-                            identifier: "ModuleManager",
-                            name: "Module Manager",
-                            version: "4.2.3",
-                            author: "sarbian",
-                            abstract: "Core patch manager",
-                            isInstalled: false,
-                            isAvailable: true),
-                    ]),
+                    moduleCount: 1),
+            ])
+    }
+
+    func loadInstallationHistoryEntry(instanceId: String?, fileName: String) async throws -> InstallationHistoryEntry {
+        XCTAssertEqual(instanceId, "primary")
+        XCTAssertEqual(fileName, "installed-Primary_KSP-2026-05-31_10-00-00.ckan")
+        return InstallationHistoryEntry(
+            fileName: fileName,
+            savedAt: "2026-05-31T10:00:00.0000000Z",
+            modules: [
+                InstallationHistoryModule(
+                    identifier: "ModuleManager",
+                    name: "Module Manager",
+                    version: "4.2.3",
+                    author: "sarbian",
+                    abstract: "Core patch manager",
+                    isInstalled: false,
+                    isAvailable: true),
             ])
     }
 
@@ -4086,6 +4770,9 @@ struct FakeSidecar: SidecarProviding {
 
     func downloadStatistics(instanceId: String?) async throws -> DownloadStatisticsResult {
         XCTAssertEqual(instanceId, "primary")
+        if let downloadStatisticsError {
+            throw downloadStatisticsError
+        }
         return DownloadStatisticsResult(
             instanceId: instanceId,
             hosts: [

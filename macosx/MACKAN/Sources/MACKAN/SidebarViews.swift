@@ -5,6 +5,7 @@ import MACKANKit
 struct MaintenanceCenterView: View {
     @ObservedObject var model: AppModel
     let pane: MaintenancePane
+    var showsPanePicker = true
     let onInstallHistoryModules: ([InstallationHistoryModule], Bool) -> Void
     let onRevealUnmanagedFile: (UnmanagedFileSummary) -> Void
     let onUpdatePlayTime: (String, Double) async -> Void
@@ -12,6 +13,8 @@ struct MaintenanceCenterView: View {
     let onPurgeCacheToLimit: () async -> Void
     let onPurgeAllCache: () async -> Void
     @State private var isLoading = false
+    @State private var isLoadingHistoryEntry = false
+    @State private var historyEntryTask: Task<Void, Never>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -28,6 +31,11 @@ struct MaintenanceCenterView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
+                    }
+                }
+                if showsPanePicker {
+                    MaintenancePanePicker(selectedPane: pane) { selectedPane in
+                        model.showMaintenancePane(selectedPane)
                     }
                 }
                 Spacer()
@@ -49,18 +57,19 @@ struct MaintenanceCenterView: View {
             Divider()
 
             ZStack {
-                paneBody
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                if isLoading {
-                    ProgressView("Loading")
-                        .padding(14)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                if shouldShowInitialLoadingState {
+                    MaintenancePaneLoadingView(pane: pane, instanceName: model.selectedInstance?.name)
+                } else {
+                    paneBody
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
         .task(id: pane) {
             await reloadPane()
+        }
+        .onDisappear {
+            historyEntryTask?.cancel()
         }
     }
 
@@ -70,6 +79,12 @@ struct MaintenanceCenterView: View {
         case .history:
             InstallationHistorySheet(
                 result: model.installationHistoryResult,
+                selectedEntry: model.selectedInstallationHistoryEntry,
+                isLoadingSelectedEntry: isLoadingHistoryEntry,
+                showsChrome: false,
+                onSelectEntry: { entry in
+                    loadInstallationHistoryEntry(fileName: entry.fileName)
+                },
                 onInstallMissing: { modules in
                     model.closeMaintenancePane()
                     onInstallHistoryModules(modules, false)
@@ -82,6 +97,7 @@ struct MaintenanceCenterView: View {
         case .unmanagedFiles:
             UnmanagedFilesSheet(
                 result: model.unmanagedFilesResult,
+                showsChrome: false,
                 onRevealFile: onRevealUnmanagedFile,
                 onClose: closePane)
         case .playTime:
@@ -117,6 +133,86 @@ struct MaintenanceCenterView: View {
     private func closePane() {
         model.closeMaintenancePane()
     }
+
+    private var shouldShowInitialLoadingState: Bool {
+        isLoading && !hasLoadedPaneResult
+    }
+
+    private var hasLoadedPaneResult: Bool {
+        switch pane {
+        case .history:
+            return model.installationHistoryResult != nil
+        case .unmanagedFiles:
+            return model.unmanagedFilesResult != nil
+        case .playTime:
+            return model.playTimeResult != nil
+        case .downloadStatistics:
+            return model.downloadStatisticsResult != nil
+        case .cache:
+            return model.cacheInfoResult != nil
+        }
+    }
+
+    private func loadInstallationHistoryEntry(fileName: String) {
+        historyEntryTask?.cancel()
+        historyEntryTask = Task { @MainActor in
+            isLoadingHistoryEntry = true
+            defer { isLoadingHistoryEntry = false }
+            do {
+                try await model.loadInstallationHistoryEntry(fileName: fileName)
+            } catch {
+                // AppModel stores the user-facing maintenance error for the alert.
+            }
+        }
+    }
+}
+
+private struct MaintenancePaneLoadingView: View {
+    let pane: MaintenancePane
+    let instanceName: String?
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ProgressView()
+                .controlSize(.large)
+            Text("Loading \(pane.title)")
+                .font(.headline)
+            if let instanceName, pane.showsSelectedInstanceSubtitle {
+                Text(instanceName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .foregroundStyle(.secondary)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Loading \(pane.title)")
+    }
+}
+
+private struct MaintenancePanePicker: View {
+    let selectedPane: MaintenancePane
+    let onSelect: (MaintenancePane) -> Void
+
+    var body: some View {
+        Picker(
+            "Maintenance",
+            selection: Binding(
+                get: { selectedPane },
+                set: { newPane in
+                    onSelect(newPane)
+                }
+            )
+        ) {
+            ForEach(MaintenancePane.allCases) { pane in
+                Label(pane.title, systemImage: pane.symbolName)
+                    .tag(pane)
+            }
+        }
+        .labelsHidden()
+        .frame(width: 190)
+    }
 }
 
 struct SidebarView: View {
@@ -130,7 +226,8 @@ struct SidebarView: View {
         VStack(alignment: .leading, spacing: 12) {
             ServiceStatusView(
                 state: model.healthState,
-                catalogLoadProgress: model.catalogLoadProgress)
+                catalogLoadProgress: model.catalogLoadProgress,
+                isRefreshingExistingCatalog: model.catalogLoadProgress != nil && !model.modules.isEmpty)
                 .padding(.horizontal, 14)
                 .padding(.top, 12)
 
@@ -182,33 +279,14 @@ struct SidebarView: View {
                 }
 
                 Section("Saved Searches") {
-                    BuiltInSavedSearchButton(
-                        title: "Upgradeable",
-                        systemImage: "arrow.up.circle",
-                        isSelected: model.mainContentRoute == .catalog && model.filter == .upgradable)
-                    {
-                        model.applyBuiltInSavedSearch(.upgradable)
-                    }
-                    BuiltInSavedSearchButton(
-                        title: "Installed",
-                        systemImage: "checkmark.circle",
-                        isSelected: model.mainContentRoute == .catalog && model.filter == .installed)
-                    {
-                        model.applyBuiltInSavedSearch(.installed)
-                    }
-                    BuiltInSavedSearchButton(
-                        title: "Cached",
-                        systemImage: "externaldrive",
-                        isSelected: model.mainContentRoute == .catalog && model.filter == .cached)
-                    {
-                        model.applyBuiltInSavedSearch(.cached)
-                    }
-                    BuiltInSavedSearchButton(
-                        title: "Incompatible",
-                        systemImage: "exclamationmark.triangle",
-                        isSelected: model.mainContentRoute == .catalog && model.filter == .incompatible)
-                    {
-                        model.applyBuiltInSavedSearch(.incompatible)
+                    ForEach(ModuleFilter.builtInSavedSearches) { filter in
+                        BuiltInSavedSearchButton(
+                            title: filter.title,
+                            systemImage: filter.builtInSavedSearchSystemImage,
+                            isSelected: model.mainContentRoute == .catalog && model.filter == filter)
+                        {
+                            model.applyBuiltInSavedSearch(filter)
+                        }
                     }
                 }
 
@@ -230,9 +308,9 @@ struct SidebarView: View {
                                             .foregroundStyle(.secondary)
                                     }
                                 } icon: {
-                                    Circle()
+                                    RoundedRectangle(cornerRadius: 4)
                                         .fill(label.colorHex.flatMap { Color(mackanHex: $0) } ?? .secondary.opacity(0.35))
-                                        .frame(width: 12, height: 12)
+                                        .frame(width: 14, height: 14)
                                 }
                             }
                             .accessibilityLabel("Label \(label.name)")
@@ -417,6 +495,7 @@ private struct MaintenanceSidebarRow: View {
 private struct ServiceStatusView: View {
     let state: AppModel.HealthState
     let catalogLoadProgress: AppModel.CatalogLoadProgress?
+    let isRefreshingExistingCatalog: Bool
 
     var body: some View {
         HStack(spacing: 8) {
@@ -464,7 +543,7 @@ private struct ServiceStatusView: View {
 
     private var title: String {
         if catalogLoadProgress != nil {
-            return "Loading catalog"
+            return isRefreshingExistingCatalog ? "Refreshing catalog" : "Loading catalog"
         }
         switch state {
         case .idle:
@@ -531,4 +610,3 @@ private struct RenameInstanceSheet: View {
             && cleanedName != originalName
     }
 }
-

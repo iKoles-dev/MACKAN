@@ -66,9 +66,7 @@ extension AppModel {
         providerSelections.sort {
             $0.id.localizedCaseInsensitiveCompare($1.id) == .orderedAscending
         }
-        pendingChangeSet = nil
-        changeSetError = nil
-        changeSetErrorDetails = nil
+        invalidateResolvedChangePreview()
     }
 
     public func stageRecommendationChoice(_ identifier: ModuleSummary.ID) {
@@ -87,18 +85,14 @@ extension AppModel {
             $0.identifier.localizedCaseInsensitiveCompare(identifier) == .orderedSame
         }
         providerSelections.removeAll { $0.requesterIdentifier == identifier || $0.selectedIdentifier == identifier }
-        pendingChangeSet = nil
-        changeSetError = nil
-        changeSetErrorDetails = nil
+        invalidateResolvedChangePreview()
     }
 
     public func clearAllStagedChanges() {
         stagedActions = [:]
         providerSelections = []
         versionedInstallSelections = []
-        pendingChangeSet = nil
-        changeSetError = nil
-        changeSetErrorDetails = nil
+        invalidateResolvedChangePreview()
     }
 
     public func resolveChanges() async throws {
@@ -106,6 +100,10 @@ extension AppModel {
         let remove = identifiers(for: .remove)
         let upgrade = identifiers(for: .upgrade)
         let replace = identifiers(for: .replace)
+        let installVersions = versionedInstallSelections
+        let providers = providerSelections
+        let instanceID = selectedInstanceID
+        let changeGeneration = stagedChangeGeneration
         guard !install.isEmpty || !versionedInstallSelections.isEmpty || !remove.isEmpty || !upgrade.isEmpty || !replace.isEmpty else {
             pendingChangeSet = nil
             changeSetError = nil
@@ -113,18 +111,29 @@ extension AppModel {
             return
         }
 
+        pendingChangeSet = nil
+        changeSetError = nil
+        changeSetErrorDetails = nil
+
         do {
-            pendingChangeSet = try await sidecar.resolveChanges(
-                instanceId: selectedInstanceID,
+            let result = try await previewSidecar.resolveChanges(
+                instanceId: instanceID,
                 install: install,
                 remove: remove,
                 upgrade: upgrade,
                 replace: replace,
-                installVersions: versionedInstallSelections,
-                providerSelections: providerSelections)
+                installVersions: installVersions,
+                providerSelections: providers)
+            guard isCurrentChangePreview(generation: changeGeneration, instanceID: instanceID) else {
+                return
+            }
+            pendingChangeSet = result
             changeSetError = nil
             changeSetErrorDetails = nil
         } catch {
+            guard isCurrentChangePreview(generation: changeGeneration, instanceID: instanceID) else {
+                return
+            }
             pendingChangeSet = nil
             changeSetError = userFacingMessage(for: error)
             changeSetErrorDetails = errorDetails(for: error)
@@ -340,9 +349,7 @@ extension AppModel {
             $0.identifier.localizedCaseInsensitiveCompare(identifier) == .orderedSame
         }
         stagedActions[identifier] = action
-        pendingChangeSet = nil
-        changeSetError = nil
-        changeSetErrorDetails = nil
+        invalidateResolvedChangePreview()
     }
 
     func stageExactInstall(_ selection: VersionedModuleSelection) {
@@ -358,9 +365,18 @@ extension AppModel {
             }
             return $0.version.localizedCaseInsensitiveCompare($1.version) == .orderedAscending
         }
+        invalidateResolvedChangePreview()
+    }
+
+    private func invalidateResolvedChangePreview() {
+        stagedChangeGeneration += 1
         pendingChangeSet = nil
         changeSetError = nil
         changeSetErrorDetails = nil
+    }
+
+    private func isCurrentChangePreview(generation: Int, instanceID: GameInstanceSummary.ID?) -> Bool {
+        stagedChangeGeneration == generation && selectedInstanceID == instanceID
     }
 
     private func identifiers(for action: StagedModAction) -> [String] {

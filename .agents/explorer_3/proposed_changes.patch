@@ -1,0 +1,13 @@
+diff --git a/Core/Configuration/KeychainAuthTokenConfiguration.cs b/Core/Configuration/KeychainAuthTokenConfiguration.cs
+index 0000000..1111111
+--- a/Core/Configuration/KeychainAuthTokenConfiguration.cs
++++ b/Core/Configuration/KeychainAuthTokenConfiguration.cs
+@@ -112,7 +112,7 @@ namespace CKAN
+             }
+             else
+             {
+-                tokenStore.SetToken(host, token);
++                tokenStore.SetToken(host, token!);
+                 inner.SetAuthToken(host, StoredInKeychainMarker);
+             }
+         }

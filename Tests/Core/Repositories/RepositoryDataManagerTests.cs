@@ -1,4 +1,6 @@
+using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 using NUnit.Framework;
 using Moq;
@@ -102,6 +104,29 @@ namespace Tests.Core.Repositories
 
                 // Assert
                 CollectionAssert.IsNotEmpty(sut.GetAllAvailableModules(repos));
+            }
+        }
+
+        [Test]
+        public void ConcurrentCacheReads_LoadRepositoryDataOnce()
+        {
+            // Arrange
+            var game  = new Mock<IGame>();
+            var user  = new NullUser();
+            var repos = new Repository[] { new Repository("TestRepo", TestData.TestKANTarGz()) };
+            using (var reposDir = new TemporaryDirectory())
+            {
+                var prev = new RepositoryDataManager(reposDir);
+                prev.Update(repos, game.Object, true,
+                            new NetAsyncDownloader(user, () => null), user);
+                var sut = new RepositoryDataManager(reposDir);
+
+                // Act + Assert
+                Assert.DoesNotThrow(() =>
+                    Parallel.For(
+                        0,
+                        Environment.ProcessorCount * 16,
+                        _ => CollectionAssert.IsNotEmpty(sut.GetAllAvailableModules(repos))));
             }
         }
     }

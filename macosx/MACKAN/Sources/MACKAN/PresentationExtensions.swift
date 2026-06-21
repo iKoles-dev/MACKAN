@@ -12,7 +12,7 @@ extension ModuleStatus {
         case .available:
             return .secondary
         case .incompatible:
-            return .orange
+            return .red
         case .cached:
             return .purple
         }
@@ -21,6 +21,10 @@ extension ModuleStatus {
 
 extension ChangeSummary {
     var actionTitle: String {
+        Self.actionTitle(for: action)
+    }
+
+    static func actionTitle(for action: String) -> String {
         switch action {
         case "install":
             return "Install"
@@ -36,6 +40,10 @@ extension ChangeSummary {
     }
 
     var actionSymbolName: String {
+        Self.actionSymbolName(for: action)
+    }
+
+    static func actionSymbolName(for action: String) -> String {
         switch action {
         case "install":
             return "plus.circle"
@@ -47,6 +55,40 @@ extension ChangeSummary {
             return "arrow.triangle.2.circlepath"
         default:
             return "circle"
+        }
+    }
+
+    var actionTint: Color {
+        Self.actionTint(for: action)
+    }
+
+    static func actionTint(for action: String) -> Color {
+        switch action {
+        case "install":
+            return .green
+        case "remove":
+            return .red
+        case "upgrade":
+            return .blue
+        case "replace":
+            return .orange
+        default:
+            return .secondary
+        }
+    }
+
+    static func actionSortRank(_ action: String) -> Int {
+        switch action {
+        case "install":
+            return 0
+        case "upgrade":
+            return 1
+        case "replace":
+            return 2
+        case "remove":
+            return 3
+        default:
+            return 99
         }
     }
 
@@ -65,6 +107,10 @@ extension ChangeSummary {
 
     var reasonText: String {
         reasons.isEmpty ? (isAuto ? "Automatic" : "User requested") : reasons.joined(separator: ", ")
+    }
+
+    var displayReasons: [String] {
+        reasons.isEmpty ? [isAuto ? "Automatic" : "User requested"] : reasons
     }
 }
 
@@ -176,7 +222,7 @@ extension OperationResult {
         case "cancelled":
             return .secondary
         case "failed":
-            return .orange
+            return .red
         default:
             return .secondary
         }
@@ -206,6 +252,71 @@ extension OperationEvent {
             return "Validate"
         default:
             return kind.capitalized
+        }
+    }
+}
+
+extension OperationProgressPhase {
+    var title: String {
+        switch self {
+        case .queued:
+            return "Queued"
+        case .downloading:
+            return "Downloading"
+        case .validating:
+            return "Validating"
+        case .installing:
+            return "Installing"
+        case .removing:
+            return "Removing"
+        case .completed:
+            return "Done"
+        case .failed:
+            return "Failed"
+        case .cancelling:
+            return "Cancelling"
+        case .cancelled:
+            return "Cancelled"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .queued:
+            return "clock"
+        case .downloading:
+            return "arrow.down.circle.fill"
+        case .validating:
+            return "checklist"
+        case .installing:
+            return "shippingbox.fill"
+        case .removing:
+            return "trash.fill"
+        case .completed:
+            return "checkmark.circle.fill"
+        case .failed:
+            return "exclamationmark.triangle.fill"
+        case .cancelling:
+            return "xmark.circle"
+        case .cancelled:
+            return "xmark.circle.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .queued:
+            return .secondary
+        case .downloading, .validating, .installing, .removing:
+            return .blue
+        case .completed:
+            return .green
+        case .failed:
+            return .red
+        case .cancelling:
+            return .orange
+        case .cancelled:
+            return .secondary
         }
     }
 }

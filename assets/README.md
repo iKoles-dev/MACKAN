@@ -30,6 +30,8 @@ The active MACKAN app icon assets are:
 
 The `.NET` application icon references use `mackan.ico`. The native macOS
 bundle generator copies `mackan.icns` into `Contents/Resources/MACKAN.icns`.
+The PNG source keeps transparent rounded-corner padding so the macOS Dock does
+not render the icon as a square tile.
 
 The MACKAN icon is a generated raster concept selected for the MACKAN preview
 branding. It intentionally avoids official Kerbal Space Program logos or text.

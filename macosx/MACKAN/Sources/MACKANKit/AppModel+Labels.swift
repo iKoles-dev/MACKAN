@@ -1,3 +1,13 @@
+struct ModuleDetailsCacheKey: Hashable {
+    let instanceId: String?
+    let identifier: String
+
+    init(instanceId: String?, identifier: String) {
+        self.instanceId = instanceId
+        self.identifier = identifier.lowercased()
+    }
+}
+
 extension AppModel {
     public func toggleLabel(_ labelName: String, for identifier: ModuleSummary.ID) async throws {
         let result = try await sidecar.toggleModuleLabel(
@@ -24,12 +34,12 @@ extension AppModel {
         guard let selectedModuleID,
               let refreshedModule = modules.first(where: { $0.identifier == selectedModuleID })
         else {
-            selectedModuleID = modules.first?.id
+            selectFirstFilteredModule()
             await refreshSelectedModuleDetails()
             return
         }
 
-        await refreshSelectedModuleDetails()
+        await refreshSelectedModuleDetails(force: true)
         if let selectedModuleDetails,
            selectedModuleDetails.module.identifier == refreshedModule.identifier {
             self.selectedModuleDetails = selectedModuleDetails.replacingModule(refreshedModule)
@@ -59,23 +69,80 @@ extension AppModel {
         manageableModuleLabels = sortedLabels(result.manageableLabels)
     }
 
-    public func refreshSelectedModuleDetails() async {
+    public func refreshSelectedModuleDetails(force: Bool = false) async {
         guard let selectedModuleID else {
             selectedModuleDetails = nil
             return
         }
+        guard force || catalogLoadProgress == nil else {
+            return
+        }
+
+        let instanceID = selectedInstanceID
+        let cacheKey = ModuleDetailsCacheKey(instanceId: instanceID, identifier: selectedModuleID)
+        let selectedSummary = modules.first {
+            $0.identifier.localizedCaseInsensitiveCompare(selectedModuleID) == .orderedSame
+        }
+        let summaryDetails = selectedSummary.map {
+            ModuleDetails(summary: $0, instanceId: instanceID)
+        }
+
+        if selectedModuleDetails?.module.identifier.localizedCaseInsensitiveCompare(selectedModuleID) != .orderedSame {
+            selectedModuleDetails = summaryDetails
+        }
+
+        if let cachedDetails = moduleDetailsCache[cacheKey] {
+            let displayDetails = selectedSummary.map { cachedDetails.replacingModule($0) } ?? cachedDetails
+            selectedModuleDetails = displayDetails
+            moduleDetailsCache[cacheKey] = displayDetails
+            if !force {
+                return
+            }
+        }
 
         do {
-            selectedModuleDetails = try await sidecar.moduleDetails(
-                instanceId: selectedInstanceID,
+            let details = try await sidecar.moduleDetails(
+                instanceId: instanceID,
                 identifier: selectedModuleID)
+            guard selectedInstanceID == instanceID,
+                  self.selectedModuleID == selectedModuleID
+            else {
+                return
+            }
+            let displayDetails = selectedSummary.map { details.replacingModule($0) } ?? details
+            selectedModuleDetails = displayDetails
+            moduleDetailsCache[cacheKey] = displayDetails
         } catch {
-            selectedModuleDetails = nil
+            if moduleDetailsCache[cacheKey] == nil,
+               selectedModuleDetails?.module.identifier.localizedCaseInsensitiveCompare(selectedModuleID) != .orderedSame {
+                selectedModuleDetails = nil
+            }
+        }
+    }
+
+    func removeCachedModuleDetails(for instanceID: GameInstanceSummary.ID?) {
+        moduleDetailsCache = moduleDetailsCache.filter { key, _ in
+            key.instanceId != instanceID
         }
     }
 }
 
 private extension ModuleDetails {
+    init(summary module: ModuleSummary, instanceId: String?) {
+        self.init(
+            instanceId: instanceId,
+            module: module,
+            abstract: module.abstract,
+            description: module.description,
+            releaseStatus: "",
+            kind: "",
+            releaseDate: module.releaseDate,
+            downloadSize: module.downloadSize,
+            installSize: module.installSize,
+            resources: [],
+            tags: module.tags)
+    }
+
     func replacingModule(_ module: ModuleSummary) -> ModuleDetails {
         ModuleDetails(
             instanceId: instanceId,

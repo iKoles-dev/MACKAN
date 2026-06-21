@@ -54,8 +54,11 @@ struct CatalogToolbarView: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField("Search mods", text: $model.searchText)
-                .textFieldStyle(.plain)
+            CatalogSearchField(
+                text: $model.searchText,
+                placeholder: "Search mods",
+                onMoveUp: model.selectPreviousFilteredModule,
+                onMoveDown: model.selectNextFilteredModule)
                 .frame(minWidth: CGFloat(CatalogToolbarLayoutPolicy.searchMinimumWidth))
                 .accessibilityLabel("Search mods")
                 .accessibilityHint("Filter modules by text query and modifiers.")

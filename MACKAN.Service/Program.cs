@@ -8,10 +8,12 @@ namespace CKAN.MACKAN.Service
         [ExcludeFromCodeCoverage]
         public static int Main(string[] args)
         {
-            var dispatcher = new MackanServiceDispatcher();
+            var output = new JsonRpcOutputWriter(Console.Out);
+            var dispatcher = new MackanServiceDispatcher(notificationCallback: output.WriteNotification);
+
             if (args.Length == 1 && args[0] == "--health")
             {
-                Console.WriteLine(dispatcher.Handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"app.health\"}"));
+                output.WriteResponse(dispatcher.Handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"app.health\"}"));
                 return 0;
             }
 
@@ -21,10 +23,10 @@ namespace CKAN.MACKAN.Service
                 return 2;
             }
 
-            return RunStdio(dispatcher);
+            return RunStdio(dispatcher, output);
         }
 
-        private static int RunStdio(MackanServiceDispatcher dispatcher)
+        private static int RunStdio(MackanServiceDispatcher dispatcher, JsonRpcOutputWriter output)
         {
             string? line;
             while ((line = Console.In.ReadLine()) != null)
@@ -33,8 +35,17 @@ namespace CKAN.MACKAN.Service
                 {
                     continue;
                 }
-                Console.WriteLine(dispatcher.Handle(line));
-                Console.Out.Flush();
+                output.BeginResponse();
+                try
+                {
+                    var response = dispatcher.Handle(line);
+                    output.WriteResponse(response);
+                }
+                catch
+                {
+                    output.AbortResponse();
+                    throw;
+                }
             }
             return 0;
         }

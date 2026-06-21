@@ -17,22 +17,38 @@ namespace CKAN.MACKAN.Service
 {
     public sealed class CoreMackanOperationProvider : IMackanOperationProvider
     {
-        public CoreMackanOperationProvider()
+        public CoreMackanOperationProvider(Action<string>? notificationCallback = null)
             : this(
                 ServiceLocator.Container.Resolve<IConfiguration>(),
-                ServiceLocator.Container.Resolve<RepositoryDataManager>())
+                ServiceLocator.Container.Resolve<RepositoryDataManager>(),
+                notificationCallback)
         {
         }
 
         public CoreMackanOperationProvider(
             IConfiguration configuration,
             RepositoryDataManager repositoryData,
-            IReadOnlyCollection<Repository>? initialRepositories = null)
+            Action<string>? notificationCallback = null)
+            : this(
+                configuration,
+                repositoryData,
+                new CoreMackanChangeSetProvider(configuration, repositoryData),
+                null,
+                notificationCallback)
+        {
+        }
+
+        public CoreMackanOperationProvider(
+            IConfiguration configuration,
+            RepositoryDataManager repositoryData,
+            IReadOnlyCollection<Repository>? initialRepositories,
+            Action<string>? notificationCallback = null)
             : this(
                 configuration,
                 repositoryData,
                 new CoreMackanChangeSetProvider(configuration, repositoryData, initialRepositories),
-                initialRepositories)
+                initialRepositories,
+                notificationCallback)
         {
         }
 
@@ -40,25 +56,27 @@ namespace CKAN.MACKAN.Service
             IConfiguration configuration,
             RepositoryDataManager repositoryData,
             IMackanChangeSetProvider changeSetProvider,
-            IReadOnlyCollection<Repository>? initialRepositories)
+            IReadOnlyCollection<Repository>? initialRepositories,
+            Action<string>? notificationCallback)
         {
             this.configuration = configuration;
             this.repositoryData = repositoryData;
             this.changeSetProvider = changeSetProvider;
             this.initialRepositories = initialRepositories ?? Array.Empty<Repository>();
+            this.notificationCallback = notificationCallback;
         }
 
         public MackanOperationResult ApplyChanges(MackanChangeSetRequest request)
         {
             var operationId = Guid.NewGuid().ToString("N");
-            var events = new OperationEventRecorder();
+            var events = new OperationEventRecorder(operationId, notificationCallback);
             return Store(ApplyChangesCore(request, operationId, events, CancellationToken.None));
         }
 
         public MackanOperationResult StartApplyChanges(MackanChangeSetRequest request)
             => StartOperation(
                 request.InstanceId,
-                new OperationEventRecorder(),
+                (operationId) => new OperationEventRecorder(operationId, notificationCallback),
                 (operationId, events, cancellationToken) => ApplyChangesCore(
                     request,
                     operationId,
@@ -68,7 +86,7 @@ namespace CKAN.MACKAN.Service
         public MackanOperationResult StartInstallCkanFiles(MackanFileInstallRequest request)
             => StartOperation(
                 request.InstanceId,
-                new OperationEventRecorder(),
+                (operationId) => new OperationEventRecorder(operationId, notificationCallback),
                 (operationId, events, cancellationToken) => InstallCkanFilesCore(
                     request,
                     operationId,
@@ -78,23 +96,25 @@ namespace CKAN.MACKAN.Service
         public MackanOperationResult StartImportDownloads(MackanDownloadImportRequest request)
             => StartOperation(
                 request.InstanceId,
-                ImportEventRecorder(request),
+                (operationId) => CreateImportEventRecorder(operationId, request),
                 (operationId, events, cancellationToken) => ImportDownloadsCore(
                     request,
                     operationId,
                     events,
                     cancellationToken));
 
-        private static MackanOperationResult StartOperation(
+        private MackanOperationResult StartOperation(
             string? instanceId,
-            OperationEventRecorder events,
+            Func<string, OperationEventRecorder> createRecorder,
             Func<string, OperationEventRecorder, CancellationToken, MackanOperationResult> run)
         {
             var operationId = Guid.NewGuid().ToString("N");
+            var events = createRecorder(operationId);
             var cancellation = new CancellationTokenSource();
             var state = OperationState.Running(operationId, instanceId, events, cancellation);
             Operations[operationId] = state;
-            events.OperationQueued();
+            events.OperationQueued(notify: false);
+            var initialResult = state.Snapshot();
 
             _ = Task.Run(() =>
             {
@@ -117,7 +137,7 @@ namespace CKAN.MACKAN.Service
                 state.Complete(result);
             });
 
-            return state.Snapshot();
+            return initialResult;
         }
 
         private MackanOperationResult ApplyChangesCore(
@@ -400,7 +420,7 @@ namespace CKAN.MACKAN.Service
         public MackanOperationResult InstallCkanFiles(MackanFileInstallRequest request)
         {
             var operationId = Guid.NewGuid().ToString("N");
-            var events = new OperationEventRecorder();
+            var events = new OperationEventRecorder(operationId, notificationCallback);
             return Store(InstallCkanFilesCore(request, operationId, events, CancellationToken.None));
         }
 
@@ -688,7 +708,7 @@ namespace CKAN.MACKAN.Service
         public MackanOperationResult ImportDownloads(MackanDownloadImportRequest request)
         {
             var operationId = Guid.NewGuid().ToString("N");
-            var events = ImportEventRecorder(request);
+            var events = CreateImportEventRecorder(operationId, request);
             return Store(ImportDownloadsCore(request, operationId, events, CancellationToken.None));
         }
 
@@ -920,8 +940,10 @@ namespace CKAN.MACKAN.Service
             }
         }
 
-        private static OperationEventRecorder ImportEventRecorder(MackanDownloadImportRequest request)
+        private OperationEventRecorder CreateImportEventRecorder(string operationId, MackanDownloadImportRequest request)
             => new OperationEventRecorder(
+                operationId,
+                notificationCallback,
                 request.DeleteImportedFiles
                     ? new[] { true, request.InstallImportedModules || request.PreviewBeforeInstall }
                     : new[] { request.InstallImportedModules || request.PreviewBeforeInstall });
@@ -1166,6 +1188,7 @@ namespace CKAN.MACKAN.Service
         private readonly RepositoryDataManager repositoryData;
         private readonly IMackanChangeSetProvider changeSetProvider;
         private readonly IReadOnlyCollection<Repository> initialRepositories;
+        private readonly Action<string>? notificationCallback;
 
         private static readonly ConcurrentDictionary<string, OperationState> Operations = new();
 
@@ -1283,8 +1306,20 @@ namespace CKAN.MACKAN.Service
 
         private sealed class OperationEventRecorder : IUser
         {
-            public OperationEventRecorder(IEnumerable<bool>? yesNoResponses = null)
+            private readonly string operationId;
+            private readonly Action<string>? notificationCallback;
+            private readonly Queue<bool> yesNoResponses;
+            private readonly List<MackanOperationEvent> events = new();
+
+            private static readonly System.Text.Json.JsonSerializerOptions SerializerOptions = new()
             {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            };
+
+            public OperationEventRecorder(string operationId, Action<string>? notificationCallback, IEnumerable<bool>? yesNoResponses = null)
+            {
+                this.operationId = operationId;
+                this.notificationCallback = notificationCallback;
                 this.yesNoResponses = yesNoResponses == null
                     ? new Queue<bool>()
                     : new Queue<bool>(yesNoResponses);
@@ -1344,8 +1379,8 @@ namespace CKAN.MACKAN.Service
             public void ModuleComplete(CkanModule module)
                 => Add("complete", module.name, 100, module.identifier, 0, module.install_size);
 
-            public void OperationQueued()
-                => Add("message", "Operation queued", null, null, null, null);
+            public void OperationQueued(bool notify = true)
+                => Add("message", "Operation queued", null, null, null, null, notify);
 
             public void CancellationRequested()
                 => Add("message", "Cancellation requested", null, null, null, null);
@@ -1356,25 +1391,38 @@ namespace CKAN.MACKAN.Service
                 int? percent,
                 string? identifier,
                 long? remainingBytes,
-                long? totalBytes)
+                long? totalBytes,
+                bool notify = true)
             {
+                var evt = new MackanOperationEvent(
+                    kind,
+                    message,
+                    percent,
+                    identifier,
+                    remainingBytes,
+                    totalBytes);
                 lock (events)
                 {
-                    events.Add(new MackanOperationEvent(
-                        kind,
-                        message,
-                        percent,
-                        identifier,
-                        remainingBytes,
-                        totalBytes));
+                    events.Add(evt);
+                }
+                if (notify && notificationCallback != null)
+                {
+                    var notification = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        jsonrpc = "2.0",
+                        method = "operations.event",
+                        @params = new
+                        {
+                            operationId = operationId,
+                            @event = evt
+                        }
+                    }, SerializerOptions);
+                    notificationCallback(notification);
                 }
             }
 
             private static int? Percent(long remaining, long total)
                 => total > 0 ? (int)(100 * (total - remaining) / total) : null;
-
-            private readonly List<MackanOperationEvent> events = new();
-            private readonly Queue<bool> yesNoResponses;
         }
     }
 }

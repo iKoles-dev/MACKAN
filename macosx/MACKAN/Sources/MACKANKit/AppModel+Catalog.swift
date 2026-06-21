@@ -1,7 +1,11 @@
 import Foundation
 
 extension AppModel {
-    public var filteredModules: [ModuleSummary] {
+    func recomputeFilteredModules() {
+        filteredModules = computeFilteredModules()
+    }
+
+    private func computeFilteredModules() -> [ModuleSummary] {
         let query = ModuleSearchQuery(searchText)
         let filtered = modules.filter { module in
             filter.includes(module)
@@ -72,6 +76,7 @@ extension AppModel {
         searchText = saved.searchText
         filter = saved.filter
         tagFilter = saved.tagFilter
+        selectFirstFilteredModule()
     }
 
     public func deleteSavedSearch(_ id: SavedModuleSearch.ID) {
@@ -82,8 +87,9 @@ extension AppModel {
             persistSavedSearches()
             if let deletedSearch, currentSearchState(matches: deletedSearch) {
                 searchText = ""
-                filter = .all
+                filter = .available
                 tagFilter = nil
+                selectFirstFilteredModule()
             }
         }
     }
@@ -166,8 +172,10 @@ extension AppModel {
 
     public func applyLabelFilter(_ label: ModuleLabelSummary) {
         showCatalog()
+        filter = .all
         searchText = "label:\(label.name.removingSearchSpaces())"
         tagFilter = nil
+        selectFirstFilteredModule()
     }
 
     public func applyBuiltInSavedSearch(_ filter: ModuleFilter) {
@@ -175,6 +183,15 @@ extension AppModel {
         self.filter = filter
         searchText = ""
         tagFilter = nil
+        selectFirstFilteredModule()
+    }
+
+    public func selectNextFilteredModule() {
+        selectAdjacentFilteredModule(offset: 1)
+    }
+
+    public func selectPreviousFilteredModule() {
+        selectAdjacentFilteredModule(offset: -1)
     }
 
     public func labels(for identifier: ModuleSummary.ID) -> [ModuleLabelSummary] {
@@ -243,7 +260,7 @@ extension AppModel {
 
     private var currentSearchStateIsEmpty: Bool {
         searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && filter == .all
+            && filter == .available
             && cleanedTagFilter == nil
     }
 
@@ -259,6 +276,43 @@ extension AppModel {
 
     private func persistModuleColumns() {
         moduleColumnStore.saveVisibleModuleColumns(visibleModuleColumns)
+    }
+
+    func firstFilteredModuleID() -> ModuleSummary.ID? {
+        filteredModules.first?.id
+    }
+
+    func selectFirstFilteredModule() {
+        selectedModuleID = firstFilteredModuleID()
+    }
+
+    func selectFirstFilteredModuleIfCurrentSelectionIsHidden() {
+        guard let selectedModuleID else {
+            self.selectedModuleID = firstFilteredModuleID()
+            return
+        }
+        guard filteredModules.contains(where: { $0.id == selectedModuleID }) else {
+            self.selectedModuleID = firstFilteredModuleID()
+            return
+        }
+    }
+
+    private func selectAdjacentFilteredModule(offset: Int) {
+        let visibleModules = filteredModules
+        guard !visibleModules.isEmpty else {
+            selectedModuleID = nil
+            return
+        }
+
+        guard let currentSelectedModuleID = selectedModuleID,
+              let currentIndex = visibleModules.firstIndex(where: { $0.id == currentSelectedModuleID })
+        else {
+            selectedModuleID = visibleModules.first?.id
+            return
+        }
+
+        let nextIndex = min(max(currentIndex + offset, 0), visibleModules.count - 1)
+        selectedModuleID = visibleModules[nextIndex].id
     }
 
     private func sorted(_ modules: [ModuleSummary]) -> [ModuleSummary] {

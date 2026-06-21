@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 
 using CKAN;
 using CKAN.MACKAN.Service;
@@ -158,6 +159,38 @@ namespace Tests.MACKAN
             ""download"": ""https://example.invalid/replacement.zip"",
             ""install"": [{ ""find"": ""DogeCoinFlag"", ""install_to"": ""GameData"" }]
         }";
+
+        [Test]
+        public void StartApplyChangesDoesNotEmitNotificationBeforeInitialResultReturns()
+        {
+            var user = new NullUser();
+            using var instance = new DisposableKSP();
+            using var config = new FakeConfiguration(instance.KSP, instance.KSP.Name);
+            using var repoData = new TemporaryRepositoryData(user);
+            var insideStartCall = 1;
+            var notificationCountDuringStart = 0;
+            var provider = new CoreMackanOperationProvider(
+                config,
+                repoData.Manager,
+                notificationCallback: _ =>
+                {
+                    if (Volatile.Read(ref insideStartCall) == 1)
+                    {
+                        Interlocked.Increment(ref notificationCountDuringStart);
+                    }
+                });
+
+            var result = provider.StartApplyChanges(new MackanChangeSetRequest(
+                instance.KSP.Name,
+                System.Array.Empty<string>(),
+                System.Array.Empty<string>(),
+                System.Array.Empty<string>()));
+            Volatile.Write(ref insideStartCall, 0);
+
+            Assert.That(result.Status, Is.EqualTo("running"));
+            Assert.That(result.Events.Select(evt => evt.Message), Does.Contain("Operation queued"));
+            Assert.That(notificationCountDuringStart, Is.Zero);
+        }
 
         [Test]
         public void InstallCkanFilesWithoutCompatibilityConfirmationReturnsIncompatibleDetails()

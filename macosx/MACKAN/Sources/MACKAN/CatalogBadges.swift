@@ -17,6 +17,26 @@ struct StatusBadge: View {
     }
 }
 
+struct StatusIcon: View {
+    let status: ModuleStatus
+    let stagedAction: StagedModAction?
+
+    init(status: ModuleStatus, stagedAction: StagedModAction? = nil) {
+        self.status = status
+        self.stagedAction = stagedAction
+    }
+
+    var body: some View {
+        Image(systemName: stagedAction?.symbolName ?? status.symbolName)
+            .font(.system(size: 13, weight: .semibold))
+            .symbolRenderingMode(.hierarchical)
+            .foregroundStyle(stagedAction == nil ? status.color : Color.accentColor)
+            .frame(width: 18, height: 18)
+            .help(stagedAction?.title ?? status.title)
+            .accessibilityLabel(stagedAction?.title ?? status.title)
+    }
+}
+
 struct PendingActionBadge: View {
     let action: StagedModAction?
 

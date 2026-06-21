@@ -167,6 +167,9 @@ struct AddInstanceSheet: View {
             if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 name = url.lastPathComponent
             }
+            // Persist a security-scoped bookmark so MACKAN can regain access
+            // to this directory on future launches without a file picker dialog.
+            model.storeInstanceBookmark(for: url)
         }
     }
 
@@ -333,6 +336,8 @@ struct CloneInstanceSheet: View {
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url {
             newPath = url.path
+            // Persist a security-scoped bookmark for the chosen destination.
+            model.storeInstanceBookmark(for: url)
         }
     }
 

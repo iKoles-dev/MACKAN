@@ -1,4 +1,5 @@
 /_build/
+launchers/
 /.vs/
 /build/tools
 test-results

@@ -140,6 +140,8 @@ fi
 if [[ "$REQUIRE_ICON" == "true" ]]; then
     BUNDLE_ICON_FILE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$INFO_PLIST" 2>/dev/null || true)"
     [[ -n "$BUNDLE_ICON_FILE" ]] || fail "CFBundleIconFile is missing in $INFO_PLIST"
+    [[ "$BUNDLE_ICON_FILE" != *.icns ]] \
+        || fail "CFBundleIconFile should omit the .icns extension so Finder resolves the app icon: $BUNDLE_ICON_FILE"
     case "$BUNDLE_ICON_FILE" in
         *.icns) ICON_FILE_NAME="$BUNDLE_ICON_FILE" ;;
         *) ICON_FILE_NAME="$BUNDLE_ICON_FILE.icns" ;;

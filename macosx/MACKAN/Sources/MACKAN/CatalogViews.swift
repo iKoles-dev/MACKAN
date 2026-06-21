@@ -86,14 +86,11 @@ struct CatalogView: View {
             Divider()
 
             ZStack {
-                GeometryReader { geometry in
-                    CatalogTableView(
-                        model: model,
-                        hoveredModuleID: $hoveredModuleID,
-                        viewportWidth: geometry.size.width,
-                        onModuleClick: handleModuleCellClick,
-                        onModuleDoubleClick: handleModuleDoubleClick)
-                }
+                CatalogTableView(
+                    model: model,
+                    hoveredModuleID: $hoveredModuleID,
+                    onModuleClick: handleModuleCellClick,
+                    onModuleDoubleClick: handleModuleDoubleClick)
 
                 if let progress = model.catalogLoadProgress, model.modules.isEmpty {
                     CatalogLoadProgressView(progress: progress)
@@ -137,6 +134,7 @@ struct CatalogView: View {
 
     private func handleModuleDoubleClick(_ module: ModuleSummary) {
         model.selectedModuleID = module.identifier
+        model.togglePreferredStagedAction(for: module)
     }
 
     private func toggleLabel(_ labelName: String) {

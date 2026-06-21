@@ -6,140 +6,297 @@ import MACKANKit
 struct CatalogTableView: View {
     @ObservedObject var model: AppModel
     @Binding var hoveredModuleID: String?
-    let viewportWidth: CGFloat
     let onModuleClick: (ModuleTableColumn, ModuleSummary) -> Void
     let onModuleDoubleClick: (ModuleSummary) -> Void
+    @State private var lastSelectedModuleID: String?
+    @State private var selectedRowFrame: CGRect?
+    @State private var pendingSelectionVisibilityCheckID: String?
 
     var body: some View {
-        let layout = CatalogLayoutPolicy.layout(
-            forWidth: viewportWidth,
-            storedColumns: model.visibleModuleColumns)
-        let rowHeight = CatalogLayoutPolicy.rowHeight(forWidth: viewportWidth)
+        GeometryReader { viewportProxy in
+            let contentWidth = CatalogLayoutPolicy.contentWidth(forViewportWidth: viewportProxy.size.width)
+            let layout = CatalogLayoutPolicy.layout(
+                forWidth: contentWidth,
+                storedColumns: model.visibleModuleColumns)
+            let rowHeight = CatalogLayoutPolicy.rowHeight(forWidth: contentWidth)
+            let selectionScrollBottomInset = CatalogLayoutPolicy.selectionScrollBottomInset(forRowHeight: rowHeight)
 
-        ScrollView([.horizontal, .vertical]) {
-            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                Section {
-                    ForEach(Array(model.filteredModules.enumerated()), id: \.element.identifier) { index, module in
-                        CatalogModuleRow(
-                            model: model,
-                            module: module,
-                            rowIndex: index,
-                            layout: layout,
-                            rowHeight: rowHeight,
-                            hoveredModuleID: $hoveredModuleID,
-                            onModuleClick: onModuleClick,
-                            onModuleDoubleClick: onModuleDoubleClick)
+            ScrollViewReader { scrollProxy in
+                ScrollView(.vertical) {
+                    LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                        Section {
+                            ForEach(Array(model.filteredModules.enumerated()), id: \.element.identifier) { index, module in
+                                CatalogModuleRow(
+                                    model: model,
+                                    module: module,
+                                    rowIndex: index,
+                                    layout: layout,
+                                    rowHeight: rowHeight,
+                                    hoveredModuleID: $hoveredModuleID,
+                                    onModuleClick: onModuleClick,
+                                    onModuleDoubleClick: onModuleDoubleClick)
+                                .id(module.identifier)
+                            }
+                        } header: {
+                            CatalogHeaderRow(model: model, layout: layout)
+                        }
                     }
-                } header: {
-                    CatalogHeaderRow(model: model, layout: layout)
+                    .frame(width: layout.totalWidth, alignment: .topLeading)
+                    .padding(.bottom, selectionScrollBottomInset)
+                }
+                .frame(width: contentWidth, alignment: .leading)
+                .coordinateSpace(name: CatalogScrollCoordinateSpace.name)
+                .background {
+                    CatalogKeyboardNavigationMonitor(
+                        onMoveUp: model.selectPreviousFilteredModule,
+                        onMoveDown: model.selectNextFilteredModule)
+                }
+                .onAppear {
+                    lastSelectedModuleID = model.selectedModuleID
+                }
+                .onChange(of: model.selectedModuleID) { selectedModuleID in
+                    guard let selectedModuleID,
+                          model.filteredModules.contains(where: { $0.id == selectedModuleID })
+                    else {
+                        lastSelectedModuleID = selectedModuleID
+                        pendingSelectionVisibilityCheckID = nil
+                        return
+                    }
+                    let anchor = scrollAnchorForSelectionChange(
+                        previousModuleID: lastSelectedModuleID,
+                        selectedModuleID: selectedModuleID,
+                        previousRowFrame: selectedRowFrame,
+                        viewportHeight: viewportProxy.size.height,
+                        rowHeight: rowHeight)
+                    lastSelectedModuleID = selectedModuleID
+                    pendingSelectionVisibilityCheckID = selectedModuleID
+                    scrollProxy.scrollTo(selectedModuleID, anchor: anchor)
+                }
+                .onPreferenceChange(SelectedCatalogRowFramePreferenceKey.self) { rowFrame in
+                    selectedRowFrame = rowFrame
+                    guard let selectedModuleID = model.selectedModuleID,
+                          pendingSelectionVisibilityCheckID == selectedModuleID,
+                          let rowFrame
+                    else {
+                        return
+                    }
+                    pendingSelectionVisibilityCheckID = nil
+                    keepSelectedRowInsideVisibleBounds(
+                        selectedModuleID: selectedModuleID,
+                        rowFrame: rowFrame,
+                        viewportHeight: viewportProxy.size.height,
+                        rowHeight: rowHeight,
+                        scrollProxy: scrollProxy)
                 }
             }
-            .frame(minWidth: layout.totalWidth, alignment: .topLeading)
         }
-        .scrollIndicators(.hidden, axes: .horizontal)
+    }
+
+    private func scrollAnchorForSelectionChange(
+        previousModuleID: String?,
+        selectedModuleID: String,
+        previousRowFrame: CGRect?,
+        viewportHeight: CGFloat,
+        rowHeight: CGFloat
+    ) -> UnitPoint? {
+        guard let previousModuleID,
+              let previousRowFrame,
+              let previousIndex = model.filteredModules.firstIndex(where: { $0.id == previousModuleID }),
+              let selectedIndex = model.filteredModules.firstIndex(where: { $0.id == selectedModuleID })
+        else {
+            return nil
+        }
+
+        let bottomBoundary = viewportHeight - CatalogLayoutPolicy.selectionScrollBottomInset(forRowHeight: rowHeight)
+        if selectedIndex > previousIndex,
+           previousRowFrame.maxY + rowHeight > bottomBoundary {
+            return UnitPoint(x: 0.5, y: 0.76)
+        }
+
+        let topBoundary = rowHeight
+        if selectedIndex < previousIndex,
+           previousRowFrame.minY - rowHeight < topBoundary {
+            return UnitPoint(x: 0.5, y: 0.24)
+        }
+
+        return nil
+    }
+
+    private func keepSelectedRowInsideVisibleBounds(
+        selectedModuleID: String,
+        rowFrame: CGRect,
+        viewportHeight: CGFloat,
+        rowHeight: CGFloat,
+        scrollProxy: ScrollViewProxy
+    ) {
+        guard viewportHeight > rowHeight * 3,
+              rowFrame.height > 0
+        else {
+            return
+        }
+
+        let topBoundary = rowHeight
+        let bottomBoundary = viewportHeight - CatalogLayoutPolicy.selectionScrollBottomInset(forRowHeight: rowHeight)
+        let anchor: UnitPoint?
+        if rowFrame.maxY > bottomBoundary {
+            anchor = UnitPoint(x: 0.5, y: 0.76)
+        } else if rowFrame.minY < topBoundary {
+            anchor = UnitPoint(x: 0.5, y: 0.24)
+        } else {
+            anchor = nil
+        }
+
+        guard let anchor else {
+            return
+        }
+
+        DispatchQueue.main.async {
+            scrollProxy.scrollTo(selectedModuleID, anchor: anchor)
+        }
+    }
+}
+
+private enum CatalogScrollCoordinateSpace {
+    static let name = "CatalogTableScroll"
+}
+
+private struct SelectedCatalogRowFramePreferenceKey: PreferenceKey {
+    static let defaultValue: CGRect? = nil
+
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        value = nextValue() ?? value
+    }
+}
+
+private struct CatalogKeyboardNavigationMonitor: NSViewRepresentable {
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
+
+    func makeNSView(context: Context) -> KeyboardNavigationView {
+        let view = KeyboardNavigationView()
+        view.onMoveUp = onMoveUp
+        view.onMoveDown = onMoveDown
+        return view
+    }
+
+    func updateNSView(_ nsView: KeyboardNavigationView, context: Context) {
+        nsView.onMoveUp = onMoveUp
+        nsView.onMoveDown = onMoveDown
+    }
+
+    static func dismantleNSView(_ nsView: KeyboardNavigationView, coordinator: ()) {
+        nsView.uninstallMonitor()
+    }
+
+    final class KeyboardNavigationView: NSView {
+        var onMoveUp: () -> Void = {}
+        var onMoveDown: () -> Void = {}
+
+        private var monitor: Any?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if window == nil {
+                uninstallMonitor()
+            } else {
+                installMonitor()
+            }
+        }
+
+        private func installMonitor() {
+            guard monitor == nil else {
+                return
+            }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self else {
+                    return event
+                }
+                return self.handle(event)
+            }
+        }
+
+        func uninstallMonitor() {
+            guard let monitor else {
+                return
+            }
+            NSEvent.removeMonitor(monitor)
+            self.monitor = nil
+        }
+
+        private func handle(_ event: NSEvent) -> NSEvent? {
+            guard let window else {
+                return event
+            }
+            guard NSApp.keyWindow == window else {
+                return event
+            }
+            guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else {
+                return event
+            }
+
+            switch event.keyCode {
+            case 126:
+                onMoveUp()
+                return nil
+            case 125:
+                onMoveDown()
+                return nil
+            default:
+                return event
+            }
+        }
     }
 }
 
 private extension ModuleTableColumn {
-    var recognizesRowDoubleClick: Bool {
+    var catalogHeaderAlignment: Alignment {
         switch self {
-        case .status, .pending, .autoInstalled:
-            return false
+        case .status:
+            return .center
         default:
-            return true
+            return .leading
         }
     }
+
+    var catalogCellAlignment: Alignment {
+        switch self {
+        case .status, .autoInstalled:
+            return .center
+        default:
+            return .leading
+        }
+    }
+
+    var recognizesRowDoubleClick: Bool { true }
 }
 
-private struct CatalogCellClickOverlay: NSViewRepresentable {
-    let clickKey: String
+private struct CatalogCellTapOverlay: View {
     let recognizesDoubleClick: Bool
     let onClick: () -> Void
     let onDoubleClick: () -> Void
 
-    func makeNSView(context: Context) -> ClickCatchingButton {
-        let view = ClickCatchingButton()
-        view.clickKey = clickKey
-        view.recognizesDoubleClick = recognizesDoubleClick
-        view.onClick = onClick
-        view.onDoubleClick = onDoubleClick
-        return view
+    var body: some View {
+        Rectangle()
+            .fill(Color.clear)
+            .contentShape(Rectangle())
+            .gesture(clickGesture)
     }
 
-    func updateNSView(_ nsView: ClickCatchingButton, context: Context) {
-        nsView.clickKey = clickKey
-        nsView.recognizesDoubleClick = recognizesDoubleClick
-        nsView.onClick = onClick
-        nsView.onDoubleClick = onDoubleClick
-    }
-
-    final class ClickCatchingButton: NSButton {
-        private static var lastClick: (key: String, timestamp: TimeInterval)?
-
-        var clickKey = ""
-        var recognizesDoubleClick = true
-        var onClick: () -> Void = {}
-        var onDoubleClick: () -> Void = {}
-
-        override init(frame frameRect: NSRect) {
-            super.init(frame: frameRect)
-            title = ""
-            isBordered = false
-            isTransparent = false
-            focusRingType = .none
-            setButtonType(.momentaryChange)
-            wantsLayer = true
-            layer?.backgroundColor = NSColor.clear.cgColor
-        }
-
-        @available(*, unavailable)
-        required init?(coder: NSCoder) {
-            nil
-        }
-
-        override func hitTest(_ point: NSPoint) -> NSView? {
-            self
-        }
-
-        override func mouseDown(with event: NSEvent) {
-            if isDoubleClick(timestamp: event.timestamp, eventClickCount: event.clickCount) {
-                Self.lastClick = nil
-                onDoubleClick()
-            } else {
-                Self.lastClick = (clickKey, event.timestamp)
-                onClick()
+    private var clickGesture: some Gesture {
+        TapGesture(count: 2)
+            .exclusively(before: TapGesture(count: 1))
+            .onEnded { value in
+                switch value {
+                case .first(_):
+                    if recognizesDoubleClick {
+                        onDoubleClick()
+                    } else {
+                        onClick()
+                    }
+                case .second(_):
+                    onClick()
+                }
             }
-        }
-
-        override func accessibilityPerformPress() -> Bool {
-            let timestamp = ProcessInfo.processInfo.systemUptime
-            if isDoubleClick(timestamp: timestamp, eventClickCount: 1) {
-                Self.lastClick = nil
-                onDoubleClick()
-            } else {
-                Self.lastClick = (clickKey, timestamp)
-                onClick()
-            }
-            return true
-        }
-
-        private func isDoubleClick(timestamp: TimeInterval, eventClickCount: Int) -> Bool {
-            guard recognizesDoubleClick else {
-                return false
-            }
-
-            if eventClickCount >= 2 {
-                return true
-            }
-
-            guard let lastClick = Self.lastClick,
-                  lastClick.key == clickKey
-            else {
-                return false
-            }
-
-            return timestamp - lastClick.timestamp <= NSEvent.doubleClickInterval
-        }
     }
 }
 
@@ -153,7 +310,11 @@ private struct CatalogHeaderRow: View {
                 headerCell(column)
             }
         }
-        .frame(minWidth: layout.totalWidth, alignment: .topLeading)
+        .frame(width: layout.totalWidth, alignment: .topLeading)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
     }
 
     private func headerCell(_ column: ModuleTableColumn) -> some View {
@@ -163,7 +324,7 @@ private struct CatalogHeaderRow: View {
                     model.sortByHeader(column)
                 } label: {
                     headerContent(column)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: column.catalogHeaderAlignment)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -176,11 +337,7 @@ private struct CatalogHeaderRow: View {
         .accessibilityIdentifier(CatalogGridIdentityPolicy.headerID(for: column))
         .help(headerHelp(for: column))
         .padding(.horizontal, 8)
-        .frame(width: layout.width(for: column), height: 28, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .overlay(alignment: .bottom) {
-            Divider()
-        }
+        .frame(width: layout.width(for: column), height: 28, alignment: column.catalogHeaderAlignment)
     }
 
     private func headerContent(_ column: ModuleTableColumn) -> some View {
@@ -240,11 +397,10 @@ private struct CatalogModuleRow: View {
             ForEach(layout.columns) { column in
                 CatalogModuleCell(model: model, column: column, module: module)
                     .padding(.horizontal, 8)
-                    .frame(width: layout.width(for: column), height: rowHeight, alignment: .leading)
+                    .frame(width: layout.width(for: column), height: rowHeight, alignment: column.catalogCellAlignment)
                     .contentShape(Rectangle())
                     .overlay {
-                        CatalogCellClickOverlay(
-                            clickKey: module.identifier,
+                        CatalogCellTapOverlay(
                             recognizesDoubleClick: column.recognizesRowDoubleClick,
                             onClick: {
                                 onModuleClick(column, module)
@@ -259,14 +415,37 @@ private struct CatalogModuleRow: View {
             }
         }
         .background(rowBackground)
+        .background {
+            if module.identifier == model.selectedModuleID {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: SelectedCatalogRowFramePreferenceKey.self,
+                        value: proxy.frame(in: .named(CatalogScrollCoordinateSpace.name)))
+                }
+            }
+        }
+        .overlay(alignment: .leading) {
+            if stagedAction != nil {
+                Rectangle()
+                    .fill(Color.accentColor)
+                    .frame(width: 3)
+            }
+        }
         .onHover { hovering in
             hoveredModuleID = hovering ? module.identifier : (hoveredModuleID == module.identifier ? nil : hoveredModuleID)
         }
     }
 
+    private var stagedAction: StagedModAction? {
+        model.stagedAction(for: module.identifier)
+    }
+
     private var rowBackground: Color {
         if module.identifier == model.selectedModuleID {
             return Color.accentColor.opacity(0.16)
+        }
+        if stagedAction != nil {
+            return Color.accentColor.opacity(0.08)
         }
         if module.identifier == hoveredModuleID {
             return Color.secondary.opacity(0.07)
@@ -294,7 +473,7 @@ private struct CatalogModuleCell: View {
     private var content: some View {
         switch column {
         case .status:
-            StatusBadge(status: module.status)
+            StatusIcon(status: module.status, stagedAction: model.stagedAction(for: module.identifier))
         case .pending:
             PendingActionBadge(action: model.stagedAction(for: module.identifier))
         case .autoInstalled:

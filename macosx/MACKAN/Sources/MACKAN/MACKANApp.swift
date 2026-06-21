@@ -6,16 +6,10 @@ import MACKANKit
 
 @main
 struct MACKANApp: App {
-    @StateObject private var model = AppModel(sidecar: SidecarClient.defaultClient())
-    @State private var isEditingLaunchCommandLines = false
-    @State private var isManagingInstances = false
-    @State private var isAddingInstance = false
-    @State private var isCloningInstance = false
-    @State private var isFakingInstance = false
-    @State private var isInstallingFromCkanFile = false
-    @State private var isImportingDownloads = false
-    @State private var applyChangesRequestID = 0
-    @State private var isExportingModpack = false
+    @StateObject private var model = AppModel(
+        sidecar: SidecarClient.defaultClient(),
+        previewSidecar: SidecarClient.defaultClient(),
+        catalogSnapshotStore: FileModuleCatalogSnapshotStore())
     @State private var isScanningGameData = false
     @State private var isLoadingUnmanagedFiles = false
     @State private var isLoadingInstallationHistory = false
@@ -26,54 +20,50 @@ struct MACKANApp: App {
     @State private var isRepairingRegistry = false
     @State private var isConfirmingDeduplicate = false
     @State private var isConfirmingRepairRegistry = false
-    @State private var isShowingAbout = false
-    @State private var isShowingUpdateCheck = false
     @State private var isShowingDiagnosticsCopyAlert = false
     @State private var diagnosticsCopyMessage = ""
+
+    init() {
+        Self.installApplicationIcon()
+    }
 
     var body: some Scene {
         WindowGroup {
             MainWindowView(
                 model: model,
-                isInstallingFromCkanFile: $isInstallingFromCkanFile,
-                isImportingDownloads: $isImportingDownloads,
-                applyChangesRequestID: $applyChangesRequestID,
                 onCopyDiagnostics: copyDiagnosticsReport)
                 .frame(
                     minWidth: CGFloat(MainWindowLayoutPolicy.minimumWindowWidth),
                     minHeight: CGFloat(MainWindowLayoutPolicy.minimumWindowHeight))
+                .background(MainWindowPlacementGuard())
                 .dynamicTypeSize(.xSmall ... .accessibility2)
                 .accessibilityLabel("MACKAN main window")
-                .sheet(isPresented: $isEditingLaunchCommandLines) {
-                    LaunchCommandLinesSheet(model: model)
-                }
-                .sheet(isPresented: $isManagingInstances) {
-                    InstanceManagementSheet(
-                        model: model,
-                        onAdd: { presentInstanceSubsheet { isAddingInstance = true } },
-                        onClone: { presentInstanceSubsheet { isCloningInstance = true } },
-                        onFake: { presentInstanceSubsheet { isFakingInstance = true } })
-                }
-                .sheet(isPresented: $isAddingInstance) {
-                    AddInstanceSheet(model: model)
-                }
-                .sheet(isPresented: $isCloningInstance) {
-                    CloneInstanceSheet(model: model)
-                }
-                .sheet(isPresented: $isFakingInstance) {
-                    FakeInstanceSheet(model: model)
-                }
-                .sheet(isPresented: $isExportingModpack) {
-                    ExportModpackSheet(model: model)
-                }
-                .sheet(isPresented: $isShowingAbout) {
-                    AboutMACKANSheet(info: model.aboutInfo())
-                }
-                .sheet(isPresented: $isShowingUpdateCheck) {
-                    UpdateCheckSheet(
-                        model: model,
-                        onCheckStable: { checkForUpdates(useDevBuilds: false) },
-                        onCheckDev: { checkForUpdates(useDevBuilds: true) })
+                .sheet(item: $model.activeSheet) { sheet in
+                    switch sheet {
+                    case .editLaunchCommandLines:
+                        LaunchCommandLinesSheet(model: model)
+                    case .manageInstances:
+                        InstanceManagementSheet(
+                            model: model,
+                            onAdd: { model.presentSheet(.addInstance) },
+                            onClone: { model.presentSheet(.cloneInstance) },
+                            onFake: { model.presentSheet(.fakeInstance) })
+                    case .addInstance:
+                        AddInstanceSheet(model: model)
+                    case .cloneInstance:
+                        CloneInstanceSheet(model: model)
+                    case .fakeInstance:
+                        FakeInstanceSheet(model: model)
+                    case .exportModpack:
+                        ExportModpackSheet(model: model)
+                    case .about:
+                        AboutMACKANSheet(info: model.aboutInfo())
+                    case .updateCheck:
+                        UpdateCheckSheet(
+                            model: model,
+                            onCheckStable: { checkForUpdates(useDevBuilds: false) },
+                            onCheckDev: { checkForUpdates(useDevBuilds: true) })
+                    }
                 }
                 .confirmationDialog(
                     "Deduplicate installed files?",
@@ -104,34 +94,44 @@ struct MACKANApp: App {
                 }
                 .task {
                     await model.refreshHealth()
+                    // Restore security-scoped access for all known game instance directories.
+                    // This enables MACKAN to read/write instance folders on subsequent launches
+                    // without showing a file picker dialog, even under Hardened Runtime restrictions.
+                    model.restoreInstanceBookmarks()
                     if await model.checkForUpdatesOnLaunchIfNeeded() {
-                        isShowingUpdateCheck = true
+                        model.presentSheet(.updateCheck)
                     }
                 }
+                .onOpenURL { url in
+                    handleIncomingURL(url)
+                }
         }
+        .defaultSize(
+            width: MainWindowLayoutPolicy.defaultWindowWidth,
+            height: MainWindowLayoutPolicy.defaultWindowHeight)
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About MACKAN") {
-                    isShowingAbout = true
+                    model.presentSheet(.about)
                 }
             }
 
             CommandMenu("Instance") {
                 Button("Manage Instances...") {
-                    isManagingInstances = true
+                    model.presentSheet(.manageInstances)
                 }
                 .keyboardShortcut("i", modifiers: [.command, .shift])
                 Divider()
                 Button("Add Instance") {
-                    isAddingInstance = true
+                    model.presentSheet(.addInstance)
                 }
                     .keyboardShortcut("n", modifiers: [.command, .shift])
                 Button("Clone Instance") {
-                    isCloningInstance = true
+                    model.presentSheet(.cloneInstance)
                 }
                 .disabled(!canCloneSelectedInstance)
                 Button("Fake Instance") {
-                    isFakingInstance = true
+                    model.presentSheet(.fakeInstance)
                 }
                 Button("Set Selected as Default") {
                     Task {
@@ -167,7 +167,7 @@ struct MACKANApp: App {
                     }
                     Divider()
                     Button("Edit Command Lines...") {
-                        isEditingLaunchCommandLines = true
+                        model.presentSheet(.editLaunchCommandLines)
                     }
                 }
                 .disabled(model.selectedInstance == nil)
@@ -184,17 +184,17 @@ struct MACKANApp: App {
                 }
                 .disabled(!model.canStageUpgradeAll)
                 Button("Apply Changes") {
-                    applyChangesRequestID += 1
+                    model.applyChangesTrigger = true
                 }
                 .disabled(!model.canApplyPendingChangeSet)
                 .keyboardShortcut(.return, modifiers: [.command])
                 Divider()
                 Button("Install from File") {
-                    isInstallingFromCkanFile = true
+                    model.installFromCkanFileTrigger = true
                 }
                 .disabled(!model.canRefreshRepositories)
                 Button("Import Downloads") {
-                    isImportingDownloads = true
+                    model.importDownloadsTrigger = true
                 }
                 .disabled(!model.canRefreshRepositories)
                 Menu("Export Mod List") {
@@ -206,7 +206,7 @@ struct MACKANApp: App {
                 }
                 .disabled(!model.canRefreshRepositories)
                 Button("Export Modpack") {
-                    isExportingModpack = true
+                    model.presentSheet(.exportModpack)
                 }
                 .disabled(!model.canRefreshRepositories)
             }
@@ -283,6 +283,15 @@ struct MACKANApp: App {
         }
     }
 
+    private static func installApplicationIcon() {
+        guard let iconURL = Bundle.main.url(forResource: "MACKAN", withExtension: "icns"),
+              let icon = NSImage(contentsOf: iconURL)
+        else {
+            return
+        }
+        NSApplication.shared.applicationIconImage = icon
+    }
+
     private var canCloneSelectedInstance: Bool {
         guard let selectedInstanceID = model.selectedInstanceID else {
             return false
@@ -299,13 +308,7 @@ struct MACKANApp: App {
         return module.map { ModuleHelpContext(identifier: $0.identifier, name: $0.name) }
     }
 
-    private func presentInstanceSubsheet(_ present: @escaping @MainActor () -> Void) {
-        isManagingInstances = false
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 150_000_000)
-            present()
-        }
-    }
+
 
     private func launchGame(_ commandLine: String?) {
         Task {
@@ -328,7 +331,7 @@ struct MACKANApp: App {
     }
 
     private func showUpdateCheck() {
-        isShowingUpdateCheck = true
+        model.presentSheet(.updateCheck)
         checkForUpdates(useDevBuilds: nil)
     }
 
@@ -504,7 +507,28 @@ struct MACKANApp: App {
             }
         }
     }
+
+    /// Handles incoming URLs opened by the system, including Spotlight deep-link results.
+    ///
+    /// Supported scheme: `mackan://mod/<identifier>`
+    /// Selecting a Spotlight result for an installed mod opens MACKAN and selects that mod.
+    private func handleIncomingURL(_ url: URL) {
+        guard url.scheme?.lowercased() == "mackan" else { return }
+        if url.host?.lowercased() == "mod" {
+            let identifier = url.lastPathComponent
+            guard !identifier.isEmpty else { return }
+            // If the mod is already in the loaded catalog, select it directly.
+            if let match = model.modules.first(where: {
+                $0.identifier.caseInsensitiveCompare(identifier) == .orderedSame
+            }) {
+                model.filter = .all
+                model.searchText = ""
+                model.selectedModuleID = match.id
+            }
+        }
+    }
 }
+
 
 private struct AboutMACKANSheet: View {
     @Environment(\.dismiss) private var dismiss

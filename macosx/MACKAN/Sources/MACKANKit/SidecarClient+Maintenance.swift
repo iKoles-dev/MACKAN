@@ -19,6 +19,18 @@ extension SidecarClient {
             params: stringParams(["instanceId": instanceId]))
     }
 
+    public func loadInstallationHistoryEntry(
+        instanceId: String?,
+        fileName: String
+    ) async throws -> InstallationHistoryEntry {
+        try await request(
+            method: "maintenance.historyEntry",
+            params: stringParams([
+                "instanceId": instanceId,
+                "fileName": fileName,
+            ]))
+    }
+
     public func listPlayTime() async throws -> PlayTimeResult {
         try await request(method: "maintenance.playTime")
     }

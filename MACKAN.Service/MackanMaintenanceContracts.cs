@@ -5,6 +5,7 @@ namespace CKAN.MACKAN.Service
         MackanMaintenanceScanResult ScanGameData(string? instanceId);
         MackanUnmanagedFilesResult ListUnmanagedFiles(string? instanceId);
         MackanInstallationHistoryResult ListInstallationHistory(string? instanceId);
+        MackanInstallationHistoryEntry LoadInstallationHistoryEntry(string? instanceId, string fileName);
         MackanPlayTimeResult ListPlayTime();
         MackanPlayTimeResult UpdatePlayTime(string instanceId, double hours);
         MackanDownloadStatisticsResult DownloadStatistics(string? instanceId);
@@ -97,14 +98,31 @@ namespace CKAN.MACKAN.Service
     {
         public MackanInstallationHistoryResult(
             string? instanceId,
-            MackanInstallationHistoryEntry[] entries)
+            MackanInstallationHistoryEntrySummary[] entries)
         {
             InstanceId = instanceId;
             Entries = entries;
         }
 
         public string? InstanceId { get; }
-        public MackanInstallationHistoryEntry[] Entries { get; }
+        public MackanInstallationHistoryEntrySummary[] Entries { get; }
+    }
+
+    public sealed class MackanInstallationHistoryEntrySummary
+    {
+        public MackanInstallationHistoryEntrySummary(
+            string fileName,
+            string savedAt,
+            int moduleCount)
+        {
+            FileName = fileName;
+            SavedAt = savedAt;
+            ModuleCount = moduleCount;
+        }
+
+        public string FileName { get; }
+        public string SavedAt { get; }
+        public int ModuleCount { get; }
     }
 
     public sealed class MackanInstallationHistoryEntry

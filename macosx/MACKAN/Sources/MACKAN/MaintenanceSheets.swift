@@ -5,17 +5,25 @@ import MACKANKit
 
 struct UnmanagedFilesSheet: View {
     let result: UnmanagedFilesResult?
+    var showsChrome = true
     let onRevealFile: (UnmanagedFileSummary) -> Void
     let onClose: () -> Void
 
     var body: some View {
+        sheetContent
+            .modifier(MaintenanceSheetFrameModifier(showsChrome: showsChrome, standardWidth: true))
+    }
+
+    private var sheetContent: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Unmanaged Files")
-                    .font(.headline)
-                Spacer()
-                Button("Close", action: onClose)
-                    .keyboardShortcut(.cancelAction)
+            if showsChrome {
+                HStack {
+                    Text("Unmanaged Files")
+                        .font(.headline)
+                    Spacer()
+                    Button("Close", action: onClose)
+                        .keyboardShortcut(.cancelAction)
+                }
             }
 
             if let result {
@@ -68,8 +76,6 @@ struct UnmanagedFilesSheet: View {
                 }
             }
         }
-        .padding()
-        .mackanModalSheetFrame(.standard)
     }
 
     private func summaryText(_ result: UnmanagedFilesResult) -> String {
@@ -80,12 +86,16 @@ struct UnmanagedFilesSheet: View {
 
 struct InstallationHistorySheet: View {
     let result: InstallationHistoryResult?
+    let selectedEntry: InstallationHistoryEntry?
+    let isLoadingSelectedEntry: Bool
+    let showsChrome: Bool
+    let onSelectEntry: (InstallationHistoryEntrySummary) -> Void
     let onInstallMissing: ([InstallationHistoryModule]) -> Void
     let onRestoreExactVersions: ([InstallationHistoryModule]) -> Void
     let onClose: () -> Void
-    @State private var selectedEntryID: InstallationHistoryEntry.ID?
+    @State private var selectedEntryID: InstallationHistoryEntrySummary.ID?
 
-    private var selectedEntry: InstallationHistoryEntry? {
+    private var selectedSummary: InstallationHistoryEntrySummary? {
         guard let result else {
             return nil
         }
@@ -103,13 +113,20 @@ struct InstallationHistorySheet: View {
     }
 
     var body: some View {
+        content
+            .modifier(MaintenanceSheetFrameModifier(showsChrome: showsChrome, standardWidth: false))
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Installation History")
-                    .font(.headline)
-                Spacer()
-                Button("Close", action: onClose)
-                    .keyboardShortcut(.cancelAction)
+            if showsChrome {
+                HStack {
+                    Text("Installation History")
+                        .font(.headline)
+                    Spacer()
+                    Button("Close", action: onClose)
+                        .keyboardShortcut(.cancelAction)
+                }
             }
 
             if let result {
@@ -123,100 +140,158 @@ struct InstallationHistorySheet: View {
                     }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    VStack(spacing: 0) {
-                        List(result.entries, selection: $selectedEntryID) { entry in
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(displayDate(entry.savedAt))
-                                    .font(.callout)
-                                    .lineLimit(1)
-                                Text("\(entry.modules.count.formatted()) mods")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                            .tag(entry.id)
-                        }
-                        .frame(minHeight: 120, idealHeight: 160, maxHeight: 190)
-
+                    HStack(spacing: 0) {
+                        historyList(result)
                         Divider()
-
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(selectedEntry.map { displayDate($0.savedAt) } ?? "")
-                                        .font(.subheadline)
-                                        .fontWeight(.semibold)
-                                    Text(selectedEntry?.fileName ?? "")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                        .truncationMode(.middle)
-                                }
-                                Spacer()
-                                HStack(spacing: 8) {
-                                    Button {
-                                        onRestoreExactVersions(exactRestorableModules)
-                                    } label: {
-                                        Label("Restore Exact Versions", systemImage: "clock.arrow.circlepath")
-                                    }
-                                    .disabled(exactRestorableModules.isEmpty)
-
-                                    Button {
-                                        onInstallMissing(missingInstallableModules)
-                                    } label: {
-                                        Label("Install Missing", systemImage: "plus.circle")
-                                    }
-                                    .disabled(missingInstallableModules.isEmpty)
-                                }
-                            }
-
-                            if let entry = selectedEntry {
-                                Table(entry.modules) {
-                                    TableColumn("Status") { module in
-                                        Text(module.historyStatusTitle)
-                                            .foregroundStyle(module.historyStatusColor)
-                                    }
-                                    .width(95)
-                                    TableColumn("Mod") { module in
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(module.name)
-                                                .lineLimit(1)
-                                            Text(module.identifier)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                                .lineLimit(1)
-                                        }
-                                    }
-                                    TableColumn("Version") { module in
-                                        Text(module.version ?? "-")
-                                            .foregroundStyle(module.version == nil ? .secondary : .primary)
-                                    }
-                                    .width(110)
-                                    TableColumn("Author") { module in
-                                        Text(module.author ?? "-")
-                                            .foregroundStyle(module.author == nil ? .secondary : .primary)
-                                            .lineLimit(1)
-                                    }
-                                    .width(min: 120, ideal: 160)
-                                    TableColumn("Description") { module in
-                                        Text(module.abstract ?? "-")
-                                            .foregroundStyle(module.abstract == nil ? .secondary : .primary)
-                                            .lineLimit(1)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.top, 12)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        historyDetail
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
             }
         }
-        .padding()
-        .mackanModalSheetFrame(.wide)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
-            selectedEntryID = selectedEntryID ?? result?.entries.first?.id
+            selectInitialEntryIfNeeded()
         }
+        .onChange(of: result?.entries ?? []) { _ in
+            selectInitialEntryIfNeeded()
+        }
+    }
+
+    private func historyList(_ result: InstallationHistoryResult) -> some View {
+        List(
+            result.entries,
+            selection: Binding(
+                get: { selectedEntryID },
+                set: { newValue in
+                    selectedEntryID = newValue
+                    if let newValue,
+                       let entry = result.entries.first(where: { $0.id == newValue }) {
+                        onSelectEntry(entry)
+                    }
+                }
+            )
+        ) { entry in
+            VStack(alignment: .leading, spacing: 3) {
+                Text(displayDate(entry.savedAt))
+                    .font(.callout)
+                    .lineLimit(1)
+                Text("\(entry.moduleCount.formatted()) mods")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .tag(entry.id)
+        }
+        .frame(width: 260)
+    }
+
+    private var historyDetail: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(selectedSummary.map { displayDate($0.savedAt) } ?? "")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text(selectedSummary?.fileName ?? "")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                Spacer()
+                HStack(spacing: 8) {
+                    Button {
+                        onRestoreExactVersions(exactRestorableModules)
+                    } label: {
+                        Label("Restore Exact Versions", systemImage: "clock.arrow.circlepath")
+                    }
+                    .disabled(exactRestorableModules.isEmpty)
+
+                    Button {
+                        onInstallMissing(missingInstallableModules)
+                    } label: {
+                        Label("Install Missing", systemImage: "plus.circle")
+                    }
+                    .disabled(missingInstallableModules.isEmpty)
+                }
+            }
+
+            if isLoadingSelectedEntry && selectedEntry?.id != selectedSummary?.id {
+                VStack(spacing: 10) {
+                    ProgressView()
+                        .controlSize(.large)
+                    Text("Loading snapshot")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let selectedEntry {
+                historyModulesTable(selectedEntry.modules)
+            } else {
+                VStack(spacing: 10) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 34))
+                        .foregroundStyle(.secondary)
+                    Text("Select a snapshot")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .padding(.leading, 14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func historyModulesTable(_ modules: [InstallationHistoryModule]) -> some View {
+        Table(modules) {
+            TableColumn("Status") { module in
+                Text(module.historyStatusTitle)
+                    .foregroundStyle(module.historyStatusColor)
+            }
+            .width(95)
+            TableColumn("Mod") { module in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(module.name)
+                        .lineLimit(1)
+                    Text(module.identifier)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            TableColumn("Version") { module in
+                Text(module.version ?? "-")
+                    .foregroundStyle(module.version == nil ? .secondary : .primary)
+            }
+            .width(110)
+            TableColumn("Author") { module in
+                Text(module.author ?? "-")
+                    .foregroundStyle(module.author == nil ? .secondary : .primary)
+                    .lineLimit(1)
+            }
+            .width(min: 120, ideal: 160)
+            TableColumn("Description") { module in
+                Text(module.abstract ?? "-")
+                    .foregroundStyle(module.abstract == nil ? .secondary : .primary)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private func selectInitialEntryIfNeeded() {
+        guard let entries = result?.entries, !entries.isEmpty else {
+            selectedEntryID = nil
+            return
+        }
+        if let selectedEntryID,
+           entries.contains(where: { $0.id == selectedEntryID }) {
+            return
+        }
+        let firstEntry = entries[0]
+        selectedEntryID = firstEntry.id
+        onSelectEntry(firstEntry)
     }
 
     private func displayDate(_ savedAt: String) -> String {
@@ -231,6 +306,29 @@ struct InstallationHistorySheet: View {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
+}
+
+private struct MaintenanceSheetFrameModifier: ViewModifier {
+    let showsChrome: Bool
+    let standardWidth: Bool
+
+    func body(content: Content) -> some View {
+        if showsChrome {
+            if standardWidth {
+                content
+                    .padding()
+                    .mackanModalSheetFrame(.standard)
+            } else {
+                content
+                    .padding()
+                    .mackanModalSheetFrame(.wide)
+            }
+        } else {
+            content
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+        }
+    }
 }
 
 struct PlayTimeSheet: View {

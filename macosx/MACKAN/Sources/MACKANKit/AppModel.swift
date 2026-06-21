@@ -66,34 +66,64 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var mainContentRoute: MainContentRoute = .catalog
     @Published public var activeSheet: AppSheet? = nil
     internal var sheetPresentationTask: Task<Void, Never>? = nil
+    internal var lastDismissalTime: TimeInterval = 0
+    @Published public var installFromCkanFileTrigger = false
+    @Published public var importDownloadsTrigger = false
+    @Published public var applyChangesTrigger = false
     @Published public var selectedInstanceID: GameInstanceSummary.ID?
     @Published public var selectedModuleID: ModuleSummary.ID?
     @Published public var searchText = "" {
-        didSet { persistCatalogState() }
+        didSet {
+            persistCatalogState()
+            recomputeFilteredModules()
+        }
     }
-    @Published public var filter = ModuleFilter.all {
-        didSet { persistCatalogState() }
+    @Published public var filter = ModuleFilter.available {
+        didSet {
+            let selectionNeedsSync = oldValue != filter
+            persistCatalogState()
+            recomputeFilteredModules()
+            if selectionNeedsSync {
+                selectFirstFilteredModuleIfCurrentSelectionIsHidden()
+            }
+        }
     }
     @Published public var tagFilter: String? {
-        didSet { persistCatalogState() }
+        didSet {
+            persistCatalogState()
+            recomputeFilteredModules()
+        }
     }
     @Published public var moduleSort = ModuleSort.name {
         didSet {
             secondaryModuleSortCriteria = normalizedSecondarySortCriteria(secondaryModuleSortCriteria)
             persistCatalogState()
+            recomputeFilteredModules()
         }
     }
     @Published public var moduleSortAscending = true {
-        didSet { persistCatalogState() }
+        didSet {
+            persistCatalogState()
+            recomputeFilteredModules()
+        }
     }
     @Published public internal(set) var secondaryModuleSortCriteria: [ModuleSortCriterion] = [] {
-        didSet { persistCatalogState() }
+        didSet {
+            persistCatalogState()
+            recomputeFilteredModules()
+        }
     }
 
     @Published public internal(set) var instances: [GameInstanceSummary]
-    @Published public internal(set) var modules: [ModuleSummary]
+    @Published public internal(set) var modules: [ModuleSummary] {
+        didSet { recomputeFilteredModules() }
+    }
+    @Published public internal(set) var filteredModules: [ModuleSummary] = []
     @Published public internal(set) var selectedModuleDetails: ModuleDetails?
-    @Published public internal(set) var moduleLabels: [ModuleLabelSummary] = []
+    var moduleDetailsCache: [ModuleDetailsCacheKey: ModuleDetails] = [:]
+    @Published public internal(set) var moduleLabels: [ModuleLabelSummary] = [] {
+        didSet { recomputeFilteredModules() }
+    }
     @Published public internal(set) var manageableModuleLabels: [ModuleLabelSummary] = []
     @Published public internal(set) var repositories: [RepositorySummary] = []
     @Published public internal(set) var availableRepositories: [RepositorySummary] = []
@@ -115,6 +145,7 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var lastMaintenanceScanResult: MaintenanceScanResult?
     @Published public internal(set) var unmanagedFilesResult: UnmanagedFilesResult?
     @Published public internal(set) var installationHistoryResult: InstallationHistoryResult?
+    @Published public internal(set) var selectedInstallationHistoryEntry: InstallationHistoryEntry?
     @Published public internal(set) var playTimeResult: PlayTimeResult?
     @Published public internal(set) var downloadStatisticsResult: DownloadStatisticsResult?
     @Published public internal(set) var cacheInfoResult: CacheInfoResult?
@@ -123,6 +154,7 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var lastRepairRegistryResult: RepairRegistryResult?
     @Published public internal(set) var lastRegistryLockRemovalResult: RegistryLockRemovalResult?
     @Published public internal(set) var maintenanceError: String?
+    @Published public internal(set) var maintenanceErrorTitle = "Maintenance failed"
     @Published public internal(set) var settings: SettingsResult?
     @Published public internal(set) var generalSettings: GeneralSettingsResult?
     @Published public internal(set) var compatibleGameVersions: CompatibleGameVersionsResult?
@@ -140,42 +172,49 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var visibleModuleColumns: [ModuleTableColumn]
 
     let sidecar: SidecarProviding
+    let previewSidecar: SidecarProviding
     let directoryOpener: InstanceDirectoryOpening
     let savedSearchStore: SavedModuleSearchStoring
     let moduleColumnStore: ModuleTableColumnStoring
     let catalogStateStore: ModuleCatalogStateStoring
+    let catalogSnapshotStore: ModuleCatalogSnapshotStoring
     var pendingOperationCompletionAction: PendingOperationCompletionAction?
+    var instanceStateLoadGeneration = 0
+    var stagedChangeGeneration = 0
+    var installationHistoryEntryLoadGeneration = 0
 
     public init(
         sidecar: SidecarProviding,
+        previewSidecar: SidecarProviding? = nil,
         directoryOpener: InstanceDirectoryOpening = WorkspaceInstanceDirectoryOpener(),
         savedSearchStore: SavedModuleSearchStoring = UserDefaultsSavedModuleSearchStore(),
         moduleColumnStore: ModuleTableColumnStoring = UserDefaultsModuleTableColumnStore(),
         catalogStateStore: ModuleCatalogStateStoring = UserDefaultsModuleCatalogStateStore(),
+        catalogSnapshotStore: ModuleCatalogSnapshotStoring = DisabledModuleCatalogSnapshotStore(),
         instances: [GameInstanceSummary] = [],
         modules: [ModuleSummary] = []
     ) {
         self.sidecar = sidecar
+        self.previewSidecar = previewSidecar ?? sidecar
         self.directoryOpener = directoryOpener
         self.savedSearchStore = savedSearchStore
         self.moduleColumnStore = moduleColumnStore
         self.catalogStateStore = catalogStateStore
+        self.catalogSnapshotStore = catalogSnapshotStore
         self.instances = instances
         self.modules = modules
         self.savedSearches = savedSearchStore.loadSavedSearches()
         let storedModuleColumns = moduleColumnStore.loadVisibleModuleColumns()
         self.visibleModuleColumns = Self.normalizedModuleColumns(storedModuleColumns)
         if let catalogState = catalogStateStore.loadCatalogState() {
-            self.searchText = catalogState.searchText
-            self.filter = catalogState.filter
-            self.tagFilter = catalogState.tagFilter
             self.moduleSort = catalogState.moduleSort
             self.moduleSortAscending = catalogState.moduleSortAscending
             self.secondaryModuleSortCriteria = normalizedSecondarySortCriteria(
                 catalogState.secondaryModuleSortCriteria)
         }
         self.selectedInstanceID = instances.first(where: \.isDefault)?.id ?? instances.first?.id
-        self.selectedModuleID = modules.first?.id
+        recomputeFilteredModules()
+        self.selectedModuleID = firstFilteredModuleID()
         if storedModuleColumns != visibleModuleColumns {
             moduleColumnStore.saveVisibleModuleColumns(visibleModuleColumns)
         }

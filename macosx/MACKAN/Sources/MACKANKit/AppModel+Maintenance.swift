@@ -2,6 +2,9 @@ import Foundation
 
 extension AppModel {
     public func showCatalog() {
+        if isShowingMaintenancePane {
+            clearMaintenancePaneResults()
+        }
         mainContentRoute = .catalog
     }
 
@@ -53,11 +56,11 @@ extension AppModel {
         do {
             let result = try await sidecar.scanGameData(instanceId: selectedInstanceID)
             lastMaintenanceScanResult = result
-            maintenanceError = nil
+            clearMaintenanceError()
             try await loadInstanceState(for: selectedInstanceID)
         } catch {
             lastMaintenanceScanResult = nil
-            maintenanceError = error.localizedDescription
+            reportMaintenanceError(error, title: "GameData scan failed")
             throw error
         }
     }
@@ -66,11 +69,10 @@ extension AppModel {
         do {
             let result = try await sidecar.listUnmanagedFiles(instanceId: selectedInstanceID)
             unmanagedFilesResult = result
-            maintenanceError = nil
-            try await loadInstanceState(for: selectedInstanceID)
+            clearMaintenanceError()
         } catch {
             unmanagedFilesResult = nil
-            maintenanceError = error.localizedDescription
+            reportMaintenanceError(error, title: "Unmanaged Files failed")
             throw error
         }
     }
@@ -78,10 +80,34 @@ extension AppModel {
     public func loadInstallationHistory() async throws {
         do {
             installationHistoryResult = try await sidecar.listInstallationHistory(instanceId: selectedInstanceID)
-            maintenanceError = nil
+            selectedInstallationHistoryEntry = nil
+            clearMaintenanceError()
         } catch {
             installationHistoryResult = nil
-            maintenanceError = error.localizedDescription
+            selectedInstallationHistoryEntry = nil
+            reportMaintenanceError(error, title: "History failed")
+            throw error
+        }
+    }
+
+    public func loadInstallationHistoryEntry(fileName: String) async throws {
+        installationHistoryEntryLoadGeneration += 1
+        let loadGeneration = installationHistoryEntryLoadGeneration
+        do {
+            let entry = try await sidecar.loadInstallationHistoryEntry(
+                instanceId: selectedInstanceID,
+                fileName: fileName)
+            guard loadGeneration == installationHistoryEntryLoadGeneration else {
+                return
+            }
+            selectedInstallationHistoryEntry = entry
+            clearMaintenanceError()
+        } catch {
+            guard loadGeneration == installationHistoryEntryLoadGeneration else {
+                return
+            }
+            selectedInstallationHistoryEntry = nil
+            reportMaintenanceError(error, title: "History failed")
             throw error
         }
     }
@@ -104,10 +130,10 @@ extension AppModel {
     public func loadPlayTime() async throws {
         do {
             playTimeResult = try await sidecar.listPlayTime()
-            maintenanceError = nil
+            clearMaintenanceError()
         } catch {
             playTimeResult = nil
-            maintenanceError = error.localizedDescription
+            reportMaintenanceError(error, title: "Play Time failed")
             throw error
         }
     }
@@ -115,9 +141,9 @@ extension AppModel {
     public func updatePlayTime(instanceId: String, hours: Double) async throws {
         do {
             playTimeResult = try await sidecar.updatePlayTime(instanceId: instanceId, hours: hours)
-            maintenanceError = nil
+            clearMaintenanceError()
         } catch {
-            maintenanceError = error.localizedDescription
+            reportMaintenanceError(error, title: "Play Time failed")
             throw error
         }
     }
@@ -125,10 +151,10 @@ extension AppModel {
     public func loadDownloadStatistics() async throws {
         do {
             downloadStatisticsResult = try await sidecar.downloadStatistics(instanceId: selectedInstanceID)
-            maintenanceError = nil
+            clearMaintenanceError()
         } catch {
             downloadStatisticsResult = nil
-            maintenanceError = error.localizedDescription
+            reportMaintenanceError(error, title: "Download Statistics failed")
             throw error
         }
     }
@@ -137,10 +163,10 @@ extension AppModel {
         do {
             cacheInfoResult = try await sidecar.cacheInfo()
             lastCachePurgeResult = nil
-            maintenanceError = nil
+            clearMaintenanceError()
         } catch {
             cacheInfoResult = nil
-            maintenanceError = error.localizedDescription
+            reportMaintenanceError(error, title: "Cache failed")
             throw error
         }
     }
@@ -165,9 +191,9 @@ extension AppModel {
             let result = try await sidecar.clearCache()
             lastCachePurgeResult = result
             cacheInfoResult = result.cache
-            maintenanceError = nil
+            clearMaintenanceError()
         } catch {
-            maintenanceError = error.localizedDescription
+            reportMaintenanceError(error, title: "Cache failed")
             throw error
         }
     }
@@ -177,9 +203,9 @@ extension AppModel {
             let result = try await sidecar.purgeCacheToLimit(instanceId: selectedInstanceID)
             lastCachePurgeResult = result
             cacheInfoResult = result.cache
-            maintenanceError = nil
+            clearMaintenanceError()
         } catch {
-            maintenanceError = error.localizedDescription
+            reportMaintenanceError(error, title: "Cache failed")
             throw error
         }
     }
@@ -188,10 +214,10 @@ extension AppModel {
         do {
             let result = try await sidecar.deduplicate()
             lastDeduplicateResult = result
-            maintenanceError = nil
+            clearMaintenanceError()
         } catch {
             lastDeduplicateResult = nil
-            maintenanceError = error.localizedDescription
+            reportMaintenanceError(error, title: "Deduplicate failed")
             throw error
         }
     }
@@ -200,13 +226,13 @@ extension AppModel {
         do {
             let result = try await sidecar.repairRegistry(instanceId: selectedInstanceID)
             lastRepairRegistryResult = result
-            maintenanceError = nil
+            clearMaintenanceError()
             if result.status == "completed" {
                 try await loadInstanceState(for: selectedInstanceID)
             }
         } catch {
             lastRepairRegistryResult = nil
-            maintenanceError = error.localizedDescription
+            reportMaintenanceError(error, title: "Repair Registry failed")
             throw error
         }
     }
@@ -215,7 +241,7 @@ extension AppModel {
         do {
             let result = try await sidecar.removeRegistryLock(instanceId: selectedInstanceID)
             lastRegistryLockRemovalResult = result
-            maintenanceError = nil
+            clearMaintenanceError()
             changeSetError = nil
             changeSetErrorDetails = nil
             operationError = nil
@@ -225,7 +251,7 @@ extension AppModel {
             }
         } catch {
             lastRegistryLockRemovalResult = nil
-            maintenanceError = error.localizedDescription
+            reportMaintenanceError(error, title: "Remove Registry Lock failed")
             throw error
         }
     }
@@ -239,7 +265,9 @@ extension AppModel {
     }
 
     public func clearInstallationHistoryResult() {
+        installationHistoryEntryLoadGeneration += 1
         installationHistoryResult = nil
+        selectedInstallationHistoryEntry = nil
     }
 
     public func clearPlayTimeResult() {
@@ -269,9 +297,15 @@ extension AppModel {
 
     public func clearMaintenanceError() {
         maintenanceError = nil
+        maintenanceErrorTitle = "Maintenance failed"
     }
 
     public func reportMaintenanceError(_ error: Error) {
+        reportMaintenanceError(error, title: "Maintenance failed")
+    }
+
+    public func reportMaintenanceError(_ error: Error, title: String) {
+        maintenanceErrorTitle = title
         maintenanceError = error.localizedDescription
     }
 

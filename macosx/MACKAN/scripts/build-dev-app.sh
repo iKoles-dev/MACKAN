@@ -11,9 +11,12 @@ CONFIGURATION="${CONFIGURATION:-release}"
 APP_NAME="${APP_NAME:-MACKAN}"
 APP_VERSION="${APP_VERSION:-0.1.0}"
 SELF_CONTAINED="${MACKAN_SELF_CONTAINED:-true}"
-DEFAULT_BUILD_ROOT="${HOME}/Library/Caches/MACKAN/build"
+DEFAULT_BUILD_ROOT="${REPO_ROOT}/.build/mackan-app"
 BUILD_ROOT="${BUILD_ROOT:-$DEFAULT_BUILD_ROOT}"
-APP_DIR="$BUILD_ROOT/$APP_NAME.app"
+AUTO_CLEAN_SERVICE_PUBLISH="${MACKAN_AUTO_CLEAN_SERVICE_PUBLISH:-true}"
+FINAL_APP_DIR="$BUILD_ROOT/$APP_NAME.app"
+STAGING_APP_DIR="$BUILD_ROOT/.${APP_NAME}.staging.app"
+APP_DIR="$STAGING_APP_DIR"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
@@ -32,10 +35,11 @@ Builds a local MACKAN.app with a bundled MACKAN.Service sidecar.
 Environment:
   APP_NAME                  App bundle name. Default: MACKAN
   APP_VERSION               Bundle version. Default: 0.1.0
-  BUILD_ROOT                Build output root. Default: ~/Library/Caches/MACKAN/build
+  BUILD_ROOT                Build output root. Default: <repo-root>/.build/mackan-app
   CONFIGURATION             Swift build configuration. Default: release
   MACKAN_RUNTIME_IDENTIFIER Runtime identifier for single-arch sidecar.
   MACKAN_SELF_CONTAINED     true/false dotnet publish mode. Default: true
+  MACKAN_AUTO_CLEAN_SERVICE_PUBLISH true/false; remove service publish staging dir after build. Default: true
   MACKAN_UNIVERSAL          true/false; build universal app bundle. Default: false
   MACKAN_VERIFY_APP_BUNDLE  true/false; verify app layout and sidecar launch. Default: true
   MACKAN_GENERATE_APP_ICON  true/false; generate and bundle MACKAN.icns. Default: true
@@ -175,6 +179,15 @@ case "$GENERATE_APP_ICON" in
         ;;
 esac
 
+case "$AUTO_CLEAN_SERVICE_PUBLISH" in
+    true|false)
+        ;;
+    *)
+        echo "MACKAN_AUTO_CLEAN_SERVICE_PUBLISH must be true or false." >&2
+        exit 2
+        ;;
+esac
+
 if [[ "$UNIVERSAL" == "true" && -n "${MACKAN_RUNTIME_IDENTIFIER:-}" ]]; then
     echo "MACKAN_RUNTIME_IDENTIFIER is only supported for single-arch builds." >&2
     exit 2
@@ -203,7 +216,8 @@ if [[ "${#RUNTIME_IDENTIFIERS[@]}" -gt 1 && "${RUNTIME_IDENTIFIERS[1]}" != "osx-
     exit 2
 fi
 
-rm -rf "$APP_DIR" "$SERVICE_PUBLISH_DIR"
+rm -rf "$STAGING_APP_DIR" "$SERVICE_PUBLISH_DIR"
+mkdir -p "$BUILD_ROOT"
 mkdir -p "$MACOS_DIR" "$SERVICE_DIR"
 
 if [[ "$UNIVERSAL" == "true" ]]; then
@@ -243,6 +257,8 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
     <string>$APP_NAME</string>
     <key>CFBundleIconFile</key>
     <string>MACKAN</string>
+    <key>CFBundleIconName</key>
+    <string>MACKAN</string>
     <key>CFBundleIdentifier</key>
     <string>app.mackan.MACKAN</string>
     <key>CFBundleInfoDictionaryVersion</key>
@@ -275,12 +291,20 @@ codesign --force --deep --sign - "$APP_DIR" >/dev/null
 xattr -cr "$APP_DIR"
 codesign --verify --deep --strict "$APP_DIR" >/dev/null
 
+rm -rf "$FINAL_APP_DIR"
+mv "$STAGING_APP_DIR" "$FINAL_APP_DIR"
+APP_DIR="$FINAL_APP_DIR"
+
 if [[ "$VERIFY_APP_BUNDLE" == "true" ]]; then
     if [[ "$UNIVERSAL" == "true" ]]; then
         "$VERIFY_APP_SCRIPT" --mode universal --require-icon "$APP_DIR" >/dev/null
     else
         "$VERIFY_APP_SCRIPT" --mode single --require-icon "$APP_DIR" >/dev/null
     fi
+fi
+
+if [[ "$AUTO_CLEAN_SERVICE_PUBLISH" == "true" ]]; then
+    rm -rf "$SERVICE_PUBLISH_DIR"
 fi
 
 echo "$APP_DIR"

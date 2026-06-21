@@ -7,7 +7,7 @@ final class CatalogLayoutPolicyTests: XCTestCase {
             forWidth: 760,
             storedColumns: ModuleTableColumn.defaultVisible)
 
-        XCTAssertEqual(columns, [.status, .name, .installedVersion, .latestVersion])
+        XCTAssertEqual(columns, [.status, .name, .latestVersion])
     }
 
     func testDefaultPresetKeepsInstalledCatalogReadable() {
@@ -15,7 +15,8 @@ final class CatalogLayoutPolicyTests: XCTestCase {
             forWidth: 1120,
             storedColumns: ModuleTableColumn.defaultVisible)
 
-        XCTAssertEqual(columns, [.status, .pending, .name, .installedVersion, .latestVersion, .author])
+        XCTAssertEqual(columns, [.status, .pending, .name, .latestVersion, .author])
+        XCTAssertFalse(columns.contains(.installedVersion))
     }
 
     func testWidePresetRespectsUserColumnsWithoutDroppingName() {
@@ -53,12 +54,29 @@ final class CatalogLayoutPolicyTests: XCTestCase {
         XCTAssertGreaterThan(layout.width(for: .author), CatalogLayoutPolicy.responsiveWidth(for: .author, viewportWidth: 1440))
     }
 
-    func testWideUserColumnSetKeepsHorizontalScrollWhenItNeedsMoreThanViewport() {
+    func testTableContentWidthReservesTrailingScrollIndicatorGutter() {
+        XCTAssertEqual(CatalogLayoutPolicy.contentWidth(forViewportWidth: 760), 748)
+        XCTAssertEqual(CatalogLayoutPolicy.contentWidth(forViewportWidth: 8), 0)
+    }
+
+    func testCompactLatestColumnExpandsToReadableTrailingColumn() {
+        let contentWidth = CatalogLayoutPolicy.contentWidth(forViewportWidth: 760)
+        let layout = CatalogLayoutPolicy.layout(
+            forWidth: contentWidth,
+            storedColumns: ModuleTableColumn.defaultVisible)
+
+        XCTAssertEqual(layout.totalWidth, contentWidth)
+        XCTAssertEqual(layout.columns, [.status, .name, .latestVersion])
+        XCTAssertGreaterThan(layout.width(for: .latestVersion), CatalogLayoutPolicy.responsiveWidth(for: .latestVersion, viewportWidth: contentWidth))
+    }
+
+    func testWideUserColumnSetFitsViewportInsteadOfRequiringHorizontalScroll() {
         let layout = CatalogLayoutPolicy.layout(
             forWidth: 1440,
             storedColumns: ModuleTableColumn.allCases)
 
-        XCTAssertGreaterThan(layout.totalWidth, 1440)
+        XCTAssertEqual(layout.totalWidth, 1440)
+        XCTAssertLessThan(layout.columns.count, ModuleTableColumn.allCases.count)
     }
 
     func testRowMetricsAreStableAcrossBreakpoints() {
@@ -67,8 +85,13 @@ final class CatalogLayoutPolicyTests: XCTestCase {
         XCTAssertEqual(CatalogLayoutPolicy.rowHeight(forWidth: 1440), 28)
     }
 
+    func testSelectionScrollBottomInsetKeepsSelectedRowAboveScrollBoundary() {
+        XCTAssertEqual(CatalogLayoutPolicy.selectionScrollBottomInset(forRowHeight: 30), 38)
+        XCTAssertEqual(CatalogLayoutPolicy.selectionScrollBottomInset(forRowHeight: 28), 36)
+    }
+
     func testStatusColumnUsesCompactWidthInSmallWindows() {
-        XCTAssertEqual(CatalogLayoutPolicy.responsiveWidth(for: .status, viewportWidth: 760), 72)
-        XCTAssertEqual(CatalogLayoutPolicy.responsiveWidth(for: .status, viewportWidth: 1360), 86)
+        XCTAssertEqual(CatalogLayoutPolicy.responsiveWidth(for: .status, viewportWidth: 760), 56)
+        XCTAssertEqual(CatalogLayoutPolicy.responsiveWidth(for: .status, viewportWidth: 1360), 56)
     }
 }

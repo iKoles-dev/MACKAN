@@ -36,19 +36,19 @@ struct MackanModernSettingsButton<Label: View>: View {
 
 struct MainWindowView: View {
     @ObservedObject var model: AppModel
-    @Binding var isInstallingFromCkanFile: Bool
-    @Binding var isImportingDownloads: Bool
-    @Binding var applyChangesRequestID: Int
     var onCopyDiagnostics: () -> Void = {}
     @State private var operationFlow = OperationFlowState()
     @State private var fileImports = FileImportFlowState()
+    @State private var selectedModuleDetailsTask: Task<Void, Never>?
 
     var body: some View {
         GeometryReader { geometry in
+            let isShowingMaintenanceRoute = model.mainContentRoute.isMaintenance
             let showSidebar = geometry.size.width >= CGFloat(MainWindowLayoutPolicy.sidebarVisibilityBreakpoint)
-            let showInspector = MainWindowLayoutPolicy.shouldShowInspector(
-                windowWidth: Double(geometry.size.width),
-                hasSelectedModule: model.selectedModule != nil)
+            let showInspector = !isShowingMaintenanceRoute
+                && MainWindowLayoutPolicy.shouldShowInspector(
+                    windowWidth: Double(geometry.size.width),
+                    hasSelectedModule: model.selectedModule != nil)
 
             HStack(spacing: 0) {
                 if showSidebar {
@@ -79,6 +79,7 @@ struct MainWindowView: View {
                         MaintenanceCenterView(
                             model: model,
                             pane: pane,
+                            showsPanePicker: !showSidebar,
                             onInstallHistoryModules: { modules, exactVersions in
                                 installHistoryModules(modules, exactVersions: exactVersions)
                             },
@@ -107,6 +108,7 @@ struct MainWindowView: View {
                     InspectorView(
                         module: model.selectedModule,
                         details: model.selectedModuleDetails,
+                        stagedAction: model.selectedModule.map { model.stagedAction(for: $0.identifier) } ?? nil,
                         emptyState: model.inspectorEmptyState)
                         .frame(
                             minWidth: CGFloat(MainWindowLayoutPolicy.inspectorMinimumWidth),
@@ -115,30 +117,35 @@ struct MainWindowView: View {
                 }
             }
         }
-        .onChange(of: model.selectedModuleID) { _ in
-            Task { await model.refreshSelectedModuleDetails() }
+        .onAppear {
+            handleAppCommandTriggers()
         }
-        .onChange(of: applyChangesRequestID) { _ in
-            guard model.canApplyPendingChangeSet else {
+        .onChange(of: model.installFromCkanFileTrigger) { _ in
+            handleInstallFromCkanFileTrigger()
+        }
+        .onChange(of: model.importDownloadsTrigger) { _ in
+            handleImportDownloadsTrigger()
+        }
+        .onChange(of: model.applyChangesTrigger) { _ in
+            handleApplyChangesTrigger()
+        }
+        .onChange(of: model.selectedModuleID) { selectedModuleID in
+            selectedModuleDetailsTask?.cancel()
+            guard selectedModuleID != nil else {
+                selectedModuleDetailsTask = nil
                 return
             }
-            applyChanges()
-        }
-        .onChange(of: isInstallingFromCkanFile) { isPresented in
-            guard isPresented else {
-                return
-            }
-            DispatchQueue.main.async {
-                presentCkanFileOpenPanel()
+            selectedModuleDetailsTask = Task {
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                guard !Task.isCancelled else {
+                    return
+                }
+                await model.refreshSelectedModuleDetails()
             }
         }
-        .onChange(of: isImportingDownloads) { isPresented in
-            guard isPresented else {
-                return
-            }
-            DispatchQueue.main.async {
-                presentImportDownloadsOpenPanel()
-            }
+        .onDisappear {
+            selectedModuleDetailsTask?.cancel()
+            selectedModuleDetailsTask = nil
         }
         .task(id: repositoryRefreshPollingID) {
             guard model.repositoryRefreshSummary?.isActive == true else {
@@ -182,7 +189,6 @@ struct MainWindowView: View {
 
     private func presentCkanFileOpenPanel() {
         let urls = runOpenPanel(configuration: .ckanFileInstall)
-        isInstallingFromCkanFile = false
         guard !urls.isEmpty else {
             return
         }
@@ -193,7 +199,6 @@ struct MainWindowView: View {
 
     private func presentImportDownloadsOpenPanel() {
         let urls = runOpenPanel(configuration: .importDownloads)
-        isImportingDownloads = false
         guard !urls.isEmpty else {
             return
         }
@@ -407,6 +412,42 @@ struct MainWindowView: View {
             availableActions: model.availableStagedActions(for: module))
     }
 
+    private func handleAppCommandTriggers() {
+        handleInstallFromCkanFileTrigger()
+        handleImportDownloadsTrigger()
+        handleApplyChangesTrigger()
+    }
+
+    private func handleInstallFromCkanFileTrigger() {
+        guard model.installFromCkanFileTrigger else {
+            return
+        }
+        model.installFromCkanFileTrigger = false
+        DispatchQueue.main.async {
+            presentCkanFileOpenPanel()
+        }
+    }
+
+    private func handleImportDownloadsTrigger() {
+        guard model.importDownloadsTrigger else {
+            return
+        }
+        model.importDownloadsTrigger = false
+        DispatchQueue.main.async {
+            presentImportDownloadsOpenPanel()
+        }
+    }
+
+    private func handleApplyChangesTrigger() {
+        guard model.applyChangesTrigger else {
+            return
+        }
+        model.applyChangesTrigger = false
+        if model.canApplyPendingChangeSet {
+            applyChanges()
+        }
+    }
+
     private func stageSelectedModule() {
         guard let module = model.selectedModule else {
             return
@@ -438,15 +479,21 @@ struct MainWindowView: View {
     }
 
     private func previewChanges() {
-        Task {
-            operationFlow.start(.resolvingChanges)
+        if operationFlow.isActive(.resolvingChanges) {
+            operationFlow.present(.changePreview)
+            return
+        }
+
+        operationFlow.start(.resolvingChanges)
+        operationFlow.present(.changePreview)
+
+        Task { @MainActor in
             defer { operationFlow.finish(.resolvingChanges) }
             do {
                 try await model.resolveChanges()
             } catch {
                 // AppModel stores a user-facing error for the preview sheet.
             }
-            operationFlow.present(.changePreview)
         }
     }
 
