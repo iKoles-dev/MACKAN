@@ -6,10 +6,7 @@ import MACKANKit
 
 @main
 struct MACKANApp: App {
-    @StateObject private var model = AppModel(
-        sidecar: SidecarClient.defaultClient(),
-        previewSidecar: SidecarClient.defaultClient(),
-        catalogSnapshotStore: FileModuleCatalogSnapshotStore())
+    @StateObject private var model: AppModel
     @State private var isScanningGameData = false
     @State private var isLoadingUnmanagedFiles = false
     @State private var isLoadingInstallationHistory = false
@@ -24,7 +21,15 @@ struct MACKANApp: App {
     @State private var diagnosticsCopyMessage = ""
 
     init() {
+        _model = StateObject(wrappedValue: Self.makeAppModel())
         Self.installApplicationIcon()
+    }
+
+    private static func makeAppModel() -> AppModel {
+        AppModel(
+            sidecar: SidecarClient.defaultClient(),
+            previewSidecar: SidecarClient.defaultClient(),
+            catalogSnapshotStore: FileModuleCatalogSnapshotStore())
     }
 
     var body: some Scene {
