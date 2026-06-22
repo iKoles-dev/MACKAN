@@ -130,23 +130,40 @@ jobs:
 
           NOTES_PATH="$RUNNER_TEMP/mackan-preview-release-notes.md"
           cat > "$NOTES_PATH" <<NOTES
-          # MACKAN preview app
+          # MACKAN Preview
+
+          Native macOS CKAN mod management for Kerbal Space Program.
+
+          ## Download
 
           Download \`${{ steps.build-app.outputs.zip_name }}\`, unzip it, and open \`MACKAN.app\`.
 
-          This is an unsigned/ad-hoc signed public preview build from branch \`${GITHUB_REF_NAME}\`.
-          It is intended for trying the native macOS UI without building from Terminal.
+          ## Who should use this
 
-          macOS Gatekeeper may still warn because this preview is not Developer ID signed or notarized yet.
+          - Mac players and testers who want to try the native SwiftUI/AppKit CKAN workflow.
+          - Contributors checking the current MACKAN app without building from Terminal.
+          - Users comfortable opening an ad-hoc signed preview app.
+
+          ## What to test
+
+          - First launch, Gatekeeper open flow, and existing KSP instance detection.
+          - Repository refresh, catalog browsing, search, filtering, and module details.
+          - Install, remove, upgrade, recommendation, and change-apply preview flows.
+          - File import/export, cache cleanup, registry repair, and settings workflows.
+          - Sidecar health, diagnostics collection, and recovery from visible errors.
+
+          ## Known release limitation
+
+          This preview is ad-hoc signed but not Developer ID signed or notarized yet.
           If macOS blocks a normal double-click, use Finder right-click -> Open.
+          A signed and notarized DMG remains a separate public-release gate.
 
-          Build:
+          ## Build
 
           - Commit: \`${GITHUB_SHA}\`
           - Version: \`${APP_VERSION}\`
           - Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-
-          A signed and notarized DMG will be published separately after the release signing gates are complete.
+          - Website: https://ikoles-dev.github.io/MACKAN/
           NOTES
 
           echo "path=$NOTES_PATH" >> "$GITHUB_OUTPUT"

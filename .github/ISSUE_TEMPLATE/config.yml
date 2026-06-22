@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Download the latest preview
+    url: https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview
+    about: Get the current public-preview app archive before reporting an old build.
+  - name: MACKAN website
+    url: https://ikoles-dev.github.io/MACKAN/
+    about: Read the current preview status and install notes.
+  - name: Release checklist
+    url: https://github.com/iKoles-dev/MACKAN/blob/mackan-native/docs/mackan/release-execution-checklist.md
+    about: See what still blocks the signed public DMG.

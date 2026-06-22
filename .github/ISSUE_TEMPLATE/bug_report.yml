@@ -1,0 +1,86 @@
+name: Bug report
+description: Report a reproducible MACKAN preview problem.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing MACKAN. Do not paste secrets, auth tokens, private logs, or full personal paths into public issues.
+  - type: input
+    id: app-version
+    attributes:
+      label: MACKAN build
+      description: Use the release tag, app version, commit, or workflow run if you know it.
+      placeholder: "Example: mackan-preview / 0.1.0-preview.123"
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version and Mac
+      placeholder: "Example: macOS 15.5 on Apple Silicon"
+    validations:
+      required: true
+  - type: dropdown
+    id: workflow-area
+    attributes:
+      label: Area
+      options:
+        - First launch
+        - Instance management
+        - Repository refresh
+        - Catalog search/filtering
+        - Module inspector
+        - Install/remove/upgrade preview
+        - Applying changes
+        - File import/export
+        - Cache or registry maintenance
+        - Settings or Keychain tokens
+        - Packaging or Gatekeeper
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Write the shortest path that triggers the bug.
+      placeholder: |
+        1. Open MACKAN
+        2. Select ...
+        3. Click ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Include the visible error text if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: KSP and CKAN context
+      description: Mention install source, existing CKAN data, repository set, and whether this is a fresh or existing instance. Avoid private personal paths.
+      placeholder: "Example: Steam KSP 1.12.5, existing CKAN registry, default repositories."
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Attach a diagnostics bundle or short relevant excerpt only if it contains no secrets or private data.
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I tested with the latest preview release or included the exact build I used.
+          required: true
+        - label: I removed secrets, auth tokens, and private personal paths from this report.
+          required: true

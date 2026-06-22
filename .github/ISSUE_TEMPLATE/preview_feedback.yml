@@ -1,0 +1,62 @@
+name: Preview feedback
+description: Share testing notes for the MACKAN public preview.
+title: "[Preview]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for workflow feedback that is not necessarily a bug. For reproducible failures, prefer the bug report template.
+  - type: input
+    id: app-version
+    attributes:
+      label: MACKAN build
+      placeholder: "Example: mackan-preview / 0.1.0-preview.123"
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version and Mac
+      placeholder: "Example: macOS 15.5 on Intel MacBook Pro"
+    validations:
+      required: true
+  - type: checkboxes
+    id: tested
+    attributes:
+      label: Workflows tested
+      options:
+        - label: First launch and Gatekeeper open flow
+        - label: Existing KSP instance detection
+        - label: Add or clone instance
+        - label: Repository refresh
+        - label: Catalog browsing and filtering
+        - label: Module detail inspection
+        - label: Install/remove/upgrade preview
+        - label: Applying changes
+        - label: File import/export
+        - label: Cache, registry, or maintenance tools
+        - label: Settings
+  - type: textarea
+    id: summary
+    attributes:
+      label: What worked well?
+      placeholder: "Short notes are fine."
+    validations:
+      required: true
+  - type: textarea
+    id: rough_edges
+    attributes:
+      label: What felt confusing, slow, or risky?
+      placeholder: "Mention labels, layout, missing context, error wording, or workflow friction."
+  - type: textarea
+    id: comparison
+    attributes:
+      label: Compared with CKAN on Windows or command line
+      description: Optional. Tell us what behavior you expected based on CKAN elsewhere.
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I removed secrets, auth tokens, and private personal paths from this feedback.
+          required: true
