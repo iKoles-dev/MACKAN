@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MACKAN - Native macOS CKAN mod management</title>
+    <meta
+      name="description"
+      content="MACKAN is a native macOS preview app for managing Kerbal Space Program mods with CKAN Core."
+    >
+    <meta property="og:title" content="MACKAN">
+    <meta
+      property="og:description"
+      content="Native macOS CKAN mod management for Kerbal Space Program."
+    >
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ikoles-dev.github.io/MACKAN/">
+    <meta property="og:image" content="https://ikoles-dev.github.io/MACKAN/assets/mackan.png">
+    <link rel="canonical" href="https://ikoles-dev.github.io/MACKAN/">
+    <link rel="icon" href="assets/mackan.png">
+    <link rel="apple-touch-icon" href="assets/mackan.png">
+    <link rel="stylesheet" href="site.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="MACKAN home">
+        <img src="assets/mackan.png" alt="" width="32" height="32">
+        <span>MACKAN</span>
+      </a>
+      <nav aria-label="Main navigation">
+        <a href="#status">Status</a>
+        <a href="#install">Install</a>
+        <a href="https://github.com/iKoles-dev/MACKAN" rel="noopener">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <img class="hero-icon" src="assets/mackan.png" alt="" width="96" height="96">
+          <h1 id="hero-title">MACKAN</h1>
+          <p class="hero-lede">
+            Native macOS CKAN mod management for Kerbal Space Program.
+          </p>
+          <p class="hero-text">
+            A public preview of a SwiftUI/AppKit desktop app backed by CKAN Core,
+            built for Mac players who want the familiar CKAN workflows without
+            opening Terminal.
+          </p>
+          <div class="hero-actions" aria-label="Primary actions">
+            <a
+              class="button button-primary"
+              href="https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview"
+              rel="noopener"
+            >
+              Download Preview
+            </a>
+            <a
+              class="button button-secondary"
+              href="https://github.com/iKoles-dev/MACKAN"
+              rel="noopener"
+            >
+              View on GitHub
+            </a>
+          </div>
+          <p class="preview-note">
+            Preview builds are ad-hoc signed and not notarized yet. A signed DMG
+            remains a release gate.
+          </p>
+        </div>
+
+        <figure class="product-scene">
+          <img
+            src="assets/screenshots/mackan-catalog.png"
+            alt="MACKAN app showing the native macOS catalog table and module inspector."
+            width="2720"
+            height="1720"
+          >
+        </figure>
+      </section>
+
+      <section class="section section-compact" id="status" aria-labelledby="status-title">
+        <div class="section-heading">
+          <h2 id="status-title">Preview Status</h2>
+          <p>
+            MACKAN is usable as a public preview, while production distribution is
+            still blocked on Mac release signing.
+          </p>
+        </div>
+        <div class="status-grid">
+          <article class="status-card">
+            <h3>Available now</h3>
+            <p>
+              GitHub Releases publishes a universal preview app archive for
+              testing the native macOS interface.
+            </p>
+            <a href="https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview" rel="noopener">
+              Open preview release
+            </a>
+          </article>
+          <article class="status-card status-warning">
+            <h3>Before broad release</h3>
+            <p>
+              The public DMG still needs Developer ID signing, hardened runtime,
+              notarization, stapling, checksums, provenance, and clean-install
+              smoke checks.
+            </p>
+            <a href="https://github.com/iKoles-dev/MACKAN/blob/mackan-native/docs/mackan/release-execution-checklist.md" rel="noopener">
+              Read release checklist
+            </a>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="works-title">
+        <div class="section-heading">
+          <h2 id="works-title">Built Around CKAN Core</h2>
+          <p>
+            The native app owns the macOS experience. CKAN Core remains the source
+            of truth for metadata, dependency resolution, downloads, installs, and
+            registry state.
+          </p>
+        </div>
+        <div class="feature-grid">
+          <article>
+            <h3>Instances</h3>
+            <p>Add, clone, rename, select defaults, reveal folders, edit launch options, and launch KSP.</p>
+          </article>
+          <article>
+            <h3>Catalog</h3>
+            <p>Search, filters, labels, table columns, sorting, status badges, and native module details.</p>
+          </article>
+          <article>
+            <h3>Change sets</h3>
+            <p>Install, remove, upgrade, replace, review dependencies, and apply operations with recovery.</p>
+          </article>
+          <article>
+            <h3>Maintenance</h3>
+            <p>Repository refresh, cache cleanup, registry repair, import/export, statistics, and settings.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section install-section" id="install" aria-labelledby="install-title">
+        <div class="section-heading">
+          <h2 id="install-title">Install the Preview</h2>
+          <p>
+            The current preview is intended for Mac testers who are comfortable
+            opening an ad-hoc signed app.
+          </p>
+        </div>
+        <ol class="install-list">
+          <li>
+            <strong>Download</strong>
+            <span>Get <code>MACKAN-preview-macOS.app.zip</code> from the preview release.</span>
+          </li>
+          <li>
+            <strong>Unzip</strong>
+            <span>Extract the archive and move or open <code>MACKAN.app</code>.</span>
+          </li>
+          <li>
+            <strong>Open</strong>
+            <span>If Gatekeeper blocks a normal double-click, use Finder right-click, then Open.</span>
+          </li>
+          <li>
+            <strong>Report</strong>
+            <span>Send macOS version, KSP install path, and a short reproduction in GitHub Issues.</span>
+          </li>
+        </ol>
+      </section>
+
+      <section class="section feedback-section" aria-labelledby="feedback-title">
+        <div>
+          <h2 id="feedback-title">Testing on macOS helps the release.</h2>
+          <p>
+            The most useful reports cover first launch, existing CKAN data, Steam
+            or manual KSP installs, repository refresh, catalog browsing, and
+            install or upgrade previews.
+          </p>
+        </div>
+        <div class="feedback-actions">
+          <a class="button button-primary" href="https://github.com/iKoles-dev/MACKAN/issues" rel="noopener">
+            Open an Issue
+          </a>
+          <a class="button button-secondary" href="https://github.com/iKoles-dev/MACKAN/blob/mackan-native/docs/mackan/parity-matrix.md" rel="noopener">
+            View Parity Matrix
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        MACKAN is an independent public-preview fork direction for a native macOS
+        CKAN interface. It is not an official CKAN, Squad, Private Division,
+        Take-Two, or Kerbal Space Program product.
+      </p>
+      <nav aria-label="Footer navigation">
+        <a href="https://github.com/iKoles-dev/MACKAN/blob/mackan-native/NOTICE.md" rel="noopener">Notice</a>
+        <a href="https://github.com/iKoles-dev/MACKAN/blob/mackan-native/SECURITY.md" rel="noopener">Security</a>
+        <a href="https://github.com/iKoles-dev/MACKAN/blob/mackan-native/CONTRIBUTING.md" rel="noopener">Contributing</a>
+      </nav>
+    </footer>
+  </body>
+</html>

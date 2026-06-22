@@ -55,6 +55,10 @@ The latest public preview app is published on GitHub Releases:
 
 - [Download MACKAN preview](https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview)
 
+The GitHub Pages landing page is published from `docs/`:
+
+- [MACKAN website](https://ikoles-dev.github.io/MACKAN/)
+
 Download `MACKAN-preview-macOS.app.zip`, unzip it, and open `MACKAN.app`.
 
 This preview archive is built by GitHub Actions for convenience. It is
