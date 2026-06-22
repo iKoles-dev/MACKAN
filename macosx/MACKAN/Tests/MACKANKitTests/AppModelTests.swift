@@ -334,6 +334,37 @@ final class AppModelTests: XCTestCase {
         XCTAssertNil(model.updateCheckError)
     }
 
+    func testLaunchSettingsRefreshRepositoriesPopulateEmptyStartupCatalog() async {
+        let recorder = RepositoryRefreshRecorder()
+        let refreshed = module(identifier: "RepositoryLoadedMod", name: "Repository Loaded Mod")
+        var sidecar = FakeSidecar(
+            modulesByInstance: ["primary": []])
+        sidecar.repositoryRefreshRecorder = recorder
+        sidecar.modulesAfterRepositoryRefreshByInstance = ["primary": [refreshed]]
+        sidecar.generalSettingsResult = GeneralSettingsResult(
+            instanceId: "primary",
+            checkForUpdatesOnLaunch: false,
+            useDevBuilds: false,
+            refreshRepositoriesOnLaunch: true,
+            autoSortByUpdate: true)
+        let model = AppModel(sidecar: sidecar)
+
+        await model.refresh()
+
+        XCTAssertTrue(model.modules.isEmpty)
+
+        let shouldPresentUpdate = await model.checkForUpdatesOnLaunchIfNeeded()
+        let refreshRecords = await recorder.records()
+
+        XCTAssertFalse(shouldPresentUpdate)
+        XCTAssertEqual(refreshRecords, [
+            RepositoryRefreshRecorder.Record(instanceId: "primary", force: false),
+        ])
+        XCTAssertEqual(model.repositoryRefreshSummary?.operationStatus, "completed")
+        XCTAssertEqual(model.modules.map(\.identifier), ["RepositoryLoadedMod"])
+        XCTAssertEqual(model.selectedModuleID, "RepositoryLoadedMod")
+    }
+
     func testSelectInstanceReloadsModulesAndSelectedModuleDetails() async {
         let model = AppModel(sidecar: FakeSidecar())
         model.filter = .all
@@ -3540,6 +3571,27 @@ actor ModuleListOperationRecorder {
     }
 }
 
+actor RepositoryRefreshRecorder {
+    struct Record: Equatable {
+        let instanceId: String?
+        let force: Bool
+    }
+
+    private var recordedRefreshes: [Record] = []
+
+    func record(instanceId: String?, force: Bool) {
+        recordedRefreshes.append(Record(instanceId: instanceId, force: force))
+    }
+
+    func hasRefreshed(instanceId: String) -> Bool {
+        recordedRefreshes.contains { $0.instanceId == instanceId }
+    }
+
+    func records() -> [Record] {
+        recordedRefreshes
+    }
+}
+
 actor ModuleDetailsGate {
     private var entered = false
     private var released = false
@@ -3599,11 +3651,13 @@ struct FakeSidecar: SidecarProviding {
     var incompatibleLaunchModules: [LaunchWarningModule] = []
     var cacheInfoPath = "/Users/test/Library/Caches/CKAN/downloads"
     var modulesByInstance: [String: [ModuleSummary]] = [:]
+    var modulesAfterRepositoryRefreshByInstance: [String: [ModuleSummary]] = [:]
     var moduleDetailsCallRecorder: ModuleDetailsCallRecorder?
     var moduleDetailsGate: ModuleDetailsGate?
     var labelsByInstance: [String: [ModuleLabelSummary]] = [:]
     var manageableLabelsByInstance: [String: [ModuleLabelSummary]] = [:]
     var availableRepositoriesByInstance: [String: [RepositorySummary]] = [:]
+    var repositoryRefreshRecorder: RepositoryRefreshRecorder?
     var listModulesGate: ModuleListGate?
     var moduleListGatesByInstance: [String: ModuleListGate] = [:]
     var moduleListStartStatusByInstance: [String: String] = [:]
@@ -3863,9 +3917,7 @@ struct FakeSidecar: SidecarProviding {
         await moduleListGate(for: instanceId)?.waitBeforeReturningModules()
         return SidecarModulesResult(
             instanceId: instanceId,
-            modules: modulesByInstance[instanceId] ?? [
-                summary(for: instanceId),
-            ])
+            modules: await modules(for: instanceId))
     }
 
     func startListModules(instanceId: String?) async throws -> ModuleListOperationResult {
@@ -3880,9 +3932,7 @@ struct FakeSidecar: SidecarProviding {
             operationId: operationId,
             instanceId: instanceId,
             status: status,
-            modules: modulesByInstance[instanceId] ?? [
-                summary(for: instanceId),
-            ],
+            modules: await modules(for: instanceId),
             events: [
                 OperationEvent(
                     kind: "progress",
@@ -3902,9 +3952,7 @@ struct FakeSidecar: SidecarProviding {
             operationId: operationId,
             instanceId: "primary",
             status: "completed",
-            modules: modulesByInstance["primary"] ?? [
-                summary(for: "primary"),
-            ])
+            modules: await modules(for: "primary"))
     }
 
     func cancelModuleList(operationId: String) async throws -> ModuleListOperationResult {
@@ -3970,7 +4018,7 @@ struct FakeSidecar: SidecarProviding {
 
     func moduleDetails(instanceId: String?, identifier: String) async throws -> ModuleDetails {
         let instanceId = instanceId ?? "primary"
-        let module = modulesByInstance[instanceId]?.first { $0.identifier == identifier }
+        let module = await modules(for: instanceId).first { $0.identifier == identifier }
             ?? summary(for: instanceId)
         XCTAssertEqual(identifier, module.identifier)
         await moduleDetailsCallRecorder?.record(instanceId: instanceId, identifier: identifier)
@@ -4058,7 +4106,7 @@ struct FakeSidecar: SidecarProviding {
 
     func refreshRepositories(instanceId: String?, force: Bool) async throws -> RepositoryRefreshResult {
         XCTAssertEqual(instanceId, "primary")
-        XCTAssertTrue(force)
+        await repositoryRefreshRecorder?.record(instanceId: instanceId, force: force)
         return RepositoryRefreshResult(
             instanceId: instanceId,
             status: repositoryStartRefreshStatus,
@@ -4318,6 +4366,18 @@ struct FakeSidecar: SidecarProviding {
 
     private func moduleListGate(for instanceId: String) -> ModuleListGate? {
         moduleListGatesByInstance[instanceId] ?? listModulesGate
+    }
+
+    private func modules(for instanceId: String) async -> [ModuleSummary] {
+        if let recorder = repositoryRefreshRecorder,
+           await recorder.hasRefreshed(instanceId: instanceId),
+           let refreshedModules = modulesAfterRepositoryRefreshByInstance[instanceId] {
+            return refreshedModules
+        }
+
+        return modulesByInstance[instanceId] ?? [
+            summary(for: instanceId),
+        ]
     }
 
     func applyChanges(

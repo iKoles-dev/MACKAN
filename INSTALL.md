@@ -31,6 +31,8 @@ If the checksum does not match, delete the zip and download it again.
 2. Move `MACKAN.app` wherever you want to test it.
 3. Open `MACKAN.app`.
 4. If macOS blocks a normal double-click, use Finder right-click, then Open.
+   On newer macOS versions you may need to approve the blocked app in
+   System Settings -> Privacy & Security -> Open Anyway.
 
 The current preview is ad-hoc signed but not Developer ID signed or notarized
 yet. A signed and notarized DMG remains a release gate.
@@ -39,7 +41,8 @@ yet. A signed and notarized DMG remains a release gate.
 
 - Confirm the app opens without Terminal.
 - Confirm MACKAN finds or lets you add a Kerbal Space Program instance.
-- Refresh repositories.
+- Confirm repository refresh on launch populates the catalog, or run
+  Mods -> Refresh Repositories if the network was unavailable on first launch.
 - Browse the catalog and open a module detail view.
 - Try a low-risk install/remove/upgrade preview before applying real changes.
 - Export or back up any important CKAN state before broad testing.

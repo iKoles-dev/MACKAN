@@ -47,7 +47,8 @@ ad-hoc signed app. A signed and notarized DMG remains a release gate.
 3. Unzip the archive.
 4. Open `MACKAN.app`.
 5. If macOS Gatekeeper blocks a normal double-click, use Finder right-click,
-   then Open.
+   then Open. On newer macOS versions you may need System Settings ->
+   Privacy & Security -> Open Anyway.
 
 See [INSTALL.md](INSTALL.md) for the full install and checksum flow.
 

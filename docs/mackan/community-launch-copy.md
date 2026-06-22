@@ -18,7 +18,8 @@ Website:
 https://ikoles-dev.github.io/MACKAN/
 
 This preview is ad-hoc signed and not notarized yet, so Gatekeeper may require
-Finder right-click -> Open. The most useful testing feedback covers first
+Finder right-click -> Open or System Settings -> Privacy & Security -> Open
+Anyway. The most useful testing feedback covers first
 launch, KSP instance detection, repository refresh, catalog browsing, module
 details, install/remove/upgrade previews, and apply/recovery behavior.
 
@@ -43,7 +44,7 @@ https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview
 Website:
 https://ikoles-dev.github.io/MACKAN/
 
-The current build is ad-hoc signed and not notarized yet, so macOS may require Finder right-click -> Open. A signed/notarized DMG is still a release gate.
+The current build is ad-hoc signed and not notarized yet, so macOS may require Finder right-click -> Open or System Settings -> Privacy & Security -> Open Anyway. A signed/notarized DMG is still a release gate.
 
 Useful feedback:
 - macOS version and Apple Silicon/Intel
