@@ -23,6 +23,7 @@ extension AppModel {
             let settings = try await sidecar.generalSettings(instanceId: selectedInstanceID)
             generalSettings = settings
             settingsError = nil
+            await refreshRepositoriesOnLaunchIfNeeded(settings)
             guard settings.checkForUpdatesOnLaunch else {
                 return false
             }
@@ -33,6 +34,21 @@ extension AppModel {
         } catch {
             settingsError = error.localizedDescription
             return false
+        }
+    }
+
+    private func refreshRepositoriesOnLaunchIfNeeded(_ settings: GeneralSettingsResult) async {
+        guard settings.refreshRepositoriesOnLaunch,
+              selectedInstanceID != nil
+        else {
+            return
+        }
+
+        do {
+            try await refreshRepositories(force: false)
+            settingsError = nil
+        } catch {
+            settingsError = error.localizedDescription
         }
     }
 

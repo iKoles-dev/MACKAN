@@ -167,6 +167,7 @@ jobs:
 
           - This preview is ad-hoc signed but not Developer ID signed or notarized yet.
           - If macOS blocks a normal double-click, use Finder right-click -> Open.
+          - On newer macOS versions, use System Settings -> Privacy & Security -> Open Anyway.
           - A signed and notarized DMG remains a separate public-release gate.
           - This is a preview build for testing native macOS workflows, not an official CKAN release.
 
