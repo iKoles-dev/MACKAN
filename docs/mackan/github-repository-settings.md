@@ -66,6 +66,9 @@ Suggested body:
 Use this issue for broad MACKAN preview feedback that is not yet a focused bug report.
 
 Preview download:
+https://github.com/iKoles-dev/MACKAN/releases/tag/v0.1.0-preview.1
+
+Latest preview channel:
 https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview
 
 Website:
@@ -79,7 +82,7 @@ https://github.com/iKoles-dev/MACKAN/blob/mackan-native/docs/mackan/troubleshoot
 
 Useful feedback includes:
 
-- MACKAN build, release tag, or workflow run
+- MACKAN build, versioned release tag, or workflow run
 - macOS version and Apple Silicon/Intel
 - KSP install source and path shape, without private personal paths
 - fresh run or existing CKAN data

@@ -9,9 +9,18 @@ on:
       app_version:
         description: Preview app version stamped into Info.plist
         required: true
-        default: "0.1.0-preview"
+        default: "0.1.0-preview.1"
       tag_name:
-        description: GitHub prerelease tag to create or update
+        description: Versioned GitHub prerelease tag to create or update
+        required: true
+        default: "v0.1.0-preview.1"
+      update_preview_channel:
+        description: Also update the moving mackan-preview channel release
+        required: true
+        type: boolean
+        default: true
+      preview_channel_tag:
+        description: Moving preview channel tag
         required: true
         default: "mackan-preview"
 
@@ -55,16 +64,22 @@ jobs:
             workflow_dispatch)
               APP_VERSION="${{ github.event.inputs.app_version }}"
               PREVIEW_TAG="${{ github.event.inputs.tag_name }}"
+              UPDATE_PREVIEW_CHANNEL="${{ github.event.inputs.update_preview_channel }}"
+              PREVIEW_CHANNEL_TAG="${{ github.event.inputs.preview_channel_tag }}"
               ;;
             *)
               APP_VERSION="0.1.0-preview.${GITHUB_RUN_NUMBER}"
               PREVIEW_TAG="mackan-preview"
+              UPDATE_PREVIEW_CHANNEL="false"
+              PREVIEW_CHANNEL_TAG="mackan-preview"
               ;;
           esac
 
           {
             echo "APP_VERSION=$APP_VERSION"
             echo "PREVIEW_TAG=$PREVIEW_TAG"
+            echo "UPDATE_PREVIEW_CHANNEL=$UPDATE_PREVIEW_CHANNEL"
+            echo "PREVIEW_CHANNEL_TAG=$PREVIEW_CHANNEL_TAG"
             echo "BUILD_ROOT=$RUNNER_TEMP/mackan-preview-build"
           } >> "$GITHUB_ENV"
 
@@ -83,6 +98,21 @@ jobs:
             exit 1
           fi
 
+          if [[ "$PREVIEW_TAG" != "mackan-preview" && "$PREVIEW_TAG" != "v$APP_VERSION" ]]; then
+            echo "Versioned preview releases should use tag v$APP_VERSION." >&2
+            exit 1
+          fi
+
+          if [[ "$UPDATE_PREVIEW_CHANNEL" != "true" && "$UPDATE_PREVIEW_CHANNEL" != "false" ]]; then
+            echo "UPDATE_PREVIEW_CHANNEL must be true or false." >&2
+            exit 1
+          fi
+
+          if [[ -z "${PREVIEW_CHANNEL_TAG:-}" || ! "$PREVIEW_CHANNEL_TAG" =~ ^[0-9A-Za-z._/-]+$ ]]; then
+            echo "PREVIEW_CHANNEL_TAG must be a non-empty git tag-safe value." >&2
+            exit 1
+          fi
+
       - name: Build universal preview app
         id: build-app
         shell: bash
@@ -90,7 +120,7 @@ jobs:
           set -euo pipefail
 
           APP_PATH="$(APP_VERSION="$APP_VERSION" BUILD_ROOT="$BUILD_ROOT" macosx/MACKAN/scripts/build-dev-app.sh --universal)"
-          ZIP_PATH="$RUNNER_TEMP/MACKAN-preview-macOS.app.zip"
+          ZIP_PATH="$RUNNER_TEMP/MACKAN-${APP_VERSION}-macOS.app.zip"
           CHECKSUM_PATH="${ZIP_PATH}.sha256"
 
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_PATH"
@@ -130,7 +160,7 @@ jobs:
 
           NOTES_PATH="$RUNNER_TEMP/mackan-preview-release-notes.md"
           cat > "$NOTES_PATH" <<NOTES
-          # MACKAN Preview
+          # MACKAN ${APP_VERSION}
 
           Native macOS CKAN mod management for Kerbal Space Program.
 
@@ -182,48 +212,68 @@ jobs:
 
           - Commit: \`${GITHUB_SHA}\`
           - Version: \`${APP_VERSION}\`
+          - Versioned release: \`${PREVIEW_TAG}\`
           - Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
           - Website: https://ikoles-dev.github.io/MACKAN/
           NOTES
 
           echo "path=$NOTES_PATH" >> "$GITHUB_OUTPUT"
 
-      - name: Update preview release
+      - name: Update preview releases
         shell: bash
         run: |
           set -euo pipefail
 
-          git tag -f "$PREVIEW_TAG" "$GITHUB_SHA"
-          git push --force origin "refs/tags/$PREVIEW_TAG"
+          update_release() {
+            local tag_name="$1"
+            local release_title="$2"
 
-          if gh release view "$PREVIEW_TAG" >/dev/null 2>&1; then
-            gh release edit "$PREVIEW_TAG" \
-              --title "MACKAN Preview" \
-              --notes-file "${{ steps.notes.outputs.path }}" \
-              --prerelease
+            git tag -f "$tag_name" "$GITHUB_SHA"
+            git push --force origin "refs/tags/$tag_name"
+
+            if gh release view "$tag_name" >/dev/null 2>&1; then
+              gh release edit "$tag_name" \
+                --title "$release_title" \
+                --notes-file "${{ steps.notes.outputs.path }}" \
+                --prerelease
+            else
+              gh release create "$tag_name" \
+                --target "$GITHUB_SHA" \
+                --title "$release_title" \
+                --notes-file "${{ steps.notes.outputs.path }}" \
+                --prerelease
+            fi
+
+            mapfile -t old_assets < <(
+              gh release view "$tag_name" --json assets --jq '.assets[].name' \
+                | grep -E '^MACKAN-.*-macOS[.]app[.]zip([.]sha256)?$' \
+                || true
+            )
+            for asset_name in "${old_assets[@]}"; do
+              [[ -n "$asset_name" ]] || continue
+              gh release delete-asset "$tag_name" "$asset_name" --yes || true
+            done
+
+            gh release upload "$tag_name" \
+              "${{ steps.build-app.outputs.zip_path }}" \
+              "${{ steps.build-app.outputs.checksum_path }}" \
+              --clobber
+          }
+
+          if [[ "$PREVIEW_TAG" == "mackan-preview" ]]; then
+            update_release "$PREVIEW_TAG" "MACKAN Preview Channel ($APP_VERSION)"
           else
-            gh release create "$PREVIEW_TAG" \
-              --target "$GITHUB_SHA" \
-              --title "MACKAN Preview" \
-              --notes-file "${{ steps.notes.outputs.path }}" \
-              --prerelease
+            update_release "$PREVIEW_TAG" "MACKAN $APP_VERSION"
           fi
 
-          gh release view "$PREVIEW_TAG" --json assets --jq '.assets[].name' \
-            | grep -E '^MACKAN-.*-macOS[.]app[.]zip([.]sha256)?$' \
-            | while read -r asset_name; do
-                gh release delete-asset "$PREVIEW_TAG" "$asset_name" --yes || true
-              done
-
-          gh release upload "$PREVIEW_TAG" \
-            "${{ steps.build-app.outputs.zip_path }}" \
-            "${{ steps.build-app.outputs.checksum_path }}" \
-            --clobber
+          if [[ "$UPDATE_PREVIEW_CHANNEL" == "true" && "$PREVIEW_CHANNEL_TAG" != "$PREVIEW_TAG" ]]; then
+            update_release "$PREVIEW_CHANNEL_TAG" "MACKAN Preview Channel ($APP_VERSION)"
+          fi
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v7
         with:
-          name: MACKAN-preview-macOS-app
+          name: MACKAN-${{ env.APP_VERSION }}-macOS-app
           path: |
             ${{ steps.build-app.outputs.zip_path }}
             ${{ steps.build-app.outputs.checksum_path }}

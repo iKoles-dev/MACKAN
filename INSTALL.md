@@ -1,33 +1,43 @@
 # Install MACKAN Preview
 
-MACKAN preview builds are published as a zipped macOS app on GitHub Releases.
+MACKAN preview builds are published as zipped macOS apps on GitHub Releases.
 They are intended for testers who are comfortable opening an ad-hoc signed app.
+
+Current preview:
+
+```text
+v0.1.0-preview.1
+```
 
 ## Download
 
-1. Open the [MACKAN Preview release](https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview).
-2. Download `MACKAN-preview-macOS.app.zip`.
-3. Download `MACKAN-preview-macOS.app.zip.sha256` from the same release.
+1. Open the [MACKAN v0.1.0-preview.1 release](https://github.com/iKoles-dev/MACKAN/releases/tag/v0.1.0-preview.1).
+2. Download `MACKAN-0.1.0-preview.1-macOS.app.zip`.
+3. Download `MACKAN-0.1.0-preview.1-macOS.app.zip.sha256` from the same release.
+
+The moving latest-preview channel remains available at
+[`mackan-preview`](https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview),
+but bug reports should include the exact versioned release tag.
 
 ## Verify The Download
 
 From the folder containing both downloaded files:
 
 ```bash
-shasum -a 256 -c MACKAN-preview-macOS.app.zip.sha256
+shasum -a 256 -c MACKAN-0.1.0-preview.1-macOS.app.zip.sha256
 ```
 
 Expected result:
 
 ```text
-MACKAN-preview-macOS.app.zip: OK
+MACKAN-0.1.0-preview.1-macOS.app.zip: OK
 ```
 
 If the checksum does not match, delete the zip and download it again.
 
 ## Open The App
 
-1. Unzip `MACKAN-preview-macOS.app.zip`.
+1. Unzip `MACKAN-0.1.0-preview.1-macOS.app.zip`.
 2. Move `MACKAN.app` wherever you want to test it.
 3. Open `MACKAN.app`.
 4. If macOS blocks a normal double-click, use Finder right-click, then Open.

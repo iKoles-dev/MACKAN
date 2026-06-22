@@ -4,6 +4,9 @@ MACKAN has two different release tracks:
 
 - **Source preview:** the repository can be public when documentation, workflow
   safety, attribution, and privacy hygiene are clean.
+- **Versioned app preview:** a GitHub prerelease such as
+  `v0.1.0-preview.1` can publish an explicit ad-hoc signed test archive while
+  the moving `mackan-preview` channel points at the latest preview.
 - **Binary release:** a downloadable DMG requires signing, notarization,
   stapling, checksums, provenance, and launch-smoke evidence.
 
@@ -71,6 +74,8 @@ Public release upload requires:
 - Release log.
 - A short human-readable release note that states preview limitations and points
   users back to CKAN upstream support where appropriate.
+- A versioned tag and release title, plus an updated forum topic title matching
+  that version.
 
 ## Known Preview Limitations
 

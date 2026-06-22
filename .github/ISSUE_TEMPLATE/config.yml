@@ -1,8 +1,11 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Download the latest preview
+  - name: Download the current preview
+    url: https://github.com/iKoles-dev/MACKAN/releases/tag/v0.1.0-preview.1
+    about: Get the current versioned public-preview app archive before reporting an old build.
+  - name: Latest preview channel
     url: https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview
-    about: Get the current public-preview app archive before reporting an old build.
+    about: Open the moving latest-preview release channel.
   - name: MACKAN website
     url: https://ikoles-dev.github.io/MACKAN/
     about: Read the current preview status and install notes.

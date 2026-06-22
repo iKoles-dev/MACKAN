@@ -8,14 +8,15 @@ downloads, installs, exports, registry locking, and compatibility decisions.
 
 [![Website](https://github.com/iKoles-dev/MACKAN/actions/workflows/pages.yml/badge.svg?branch=mackan-native)](https://github.com/iKoles-dev/MACKAN/actions/workflows/pages.yml)
 [![Preview app](https://github.com/iKoles-dev/MACKAN/actions/workflows/mackan-preview-release.yml/badge.svg?branch=mackan-native)](https://github.com/iKoles-dev/MACKAN/actions/workflows/mackan-preview-release.yml)
-[![Preview release](https://img.shields.io/github/v/release/iKoles-dev/MACKAN?include_prereleases&label=preview)](https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview)
+[![Preview release](https://img.shields.io/badge/preview-v0.1.0--preview.1-477a59)](https://github.com/iKoles-dev/MACKAN/releases/tag/v0.1.0-preview.1)
 [![Website](https://img.shields.io/badge/website-MACKAN-477a59)](https://ikoles-dev.github.io/MACKAN/)
 
 ![MACKAN catalog and module inspector](docs/assets/screenshots/mackan-catalog.png)
 
 ## Quick Links
 
-- [Download preview app](https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview)
+- [Download current preview](https://github.com/iKoles-dev/MACKAN/releases/tag/v0.1.0-preview.1)
+- [Open latest preview channel](https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview)
 - [Install the preview](INSTALL.md)
 - [Open the website](https://ikoles-dev.github.io/MACKAN/)
 - [Report preview feedback](https://github.com/iKoles-dev/MACKAN/issues/new/choose)
@@ -32,7 +33,8 @@ MACKAN is a public preview fork direction, not an official CKAN release.
 | --- | --- |
 | Native macOS UI | Active preview development |
 | CKAN Core behavior | Preserved through a .NET sidecar |
-| Preview `.app` archive | Published from GitHub Actions |
+| Current preview | `v0.1.0-preview.1` |
+| Preview `.app` archive | Published from GitHub Actions as a versioned prerelease |
 | Signed public DMG | Blocked on Developer ID signing and notarization |
 | Upstream CKAN code | Still present because MACKAN builds on CKAN |
 
@@ -41,8 +43,8 @@ ad-hoc signed app. A signed and notarized DMG remains a release gate.
 
 ## Download The Preview
 
-1. Download `MACKAN-preview-macOS.app.zip` and the matching `.sha256` file from
-   the [MACKAN Preview release](https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview).
+1. Download `MACKAN-0.1.0-preview.1-macOS.app.zip` and the matching `.sha256`
+   file from the [MACKAN v0.1.0-preview.1 release](https://github.com/iKoles-dev/MACKAN/releases/tag/v0.1.0-preview.1).
 2. Verify the checksum.
 3. Unzip the archive.
 4. Open `MACKAN.app`.
@@ -149,6 +151,7 @@ Public-facing MACKAN planning and implementation docs:
 - [Troubleshooting](docs/mackan/troubleshooting.md)
 - [Diagnostics and privacy](docs/mackan/diagnostics-privacy.md)
 - [Release roadmap](docs/mackan/release-roadmap.md)
+- [Preview release versioning](docs/mackan/preview-release.md)
 - [Release execution checklist](docs/mackan/release-execution-checklist.md)
 - [Community launch copy](docs/mackan/community-launch-copy.md)
 - [GitHub repository settings](docs/mackan/github-repository-settings.md)

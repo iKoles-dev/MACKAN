@@ -15,6 +15,7 @@ release plan, and parity work.
 | Native app, sidecar, and CKAN Core boundaries | [Architecture](architecture.md) |
 | What is implemented versus Windows CKAN | [Parity matrix](parity-matrix.md) |
 | What blocks a broader public release | [Release roadmap](release-roadmap.md) |
+| Current preview versioning | [Preview release versioning](preview-release.md) |
 | Concrete signing and release gates | [Release execution checklist](release-execution-checklist.md) |
 | Operational release flow | [v1 release runbook](v1-release-execution-runbook.md) |
 | Public-preview hygiene status | [Public readiness report](public-readiness-report.md) |

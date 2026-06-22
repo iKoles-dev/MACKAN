@@ -56,6 +56,8 @@ Before uploading a downloadable DMG:
 - [ ] Checksum, provenance, notary JSON, release summary, and release log are
   generated.
 - [ ] `verify-public-release-handoff.sh` passes for the full artifact set.
+- [ ] GitHub release tag, app version, archive name, checksum name, and forum
+  topic title all use the same MACKAN version.
 
 Unsigned local builds may be shared only as explicit development previews, not
 as production release artifacts.

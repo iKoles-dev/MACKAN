@@ -10,7 +10,7 @@ body:
     id: app-version
     attributes:
       label: MACKAN build
-      placeholder: "Example: mackan-preview / 0.1.0-preview.123"
+      placeholder: "Example: v0.1.0-preview.1 / 0.1.0-preview.1"
     validations:
       required: true
   - type: input
