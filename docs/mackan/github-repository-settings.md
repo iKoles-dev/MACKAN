@@ -1,13 +1,11 @@
 # GitHub Repository Settings
 
-These settings complete the public MACKAN repository presentation. They require
-GitHub repository Settings access because the current automation environment
-does not expose repository metadata, issue enablement, label creation, or pinned
-issue APIs.
+Use this page to audit or recreate the public MACKAN repository presentation.
+These are the intended GitHub About, feature, label, and pinned issue settings.
 
 ## About Section
 
-Set these fields in the repository About panel:
+The repository About panel should use:
 
 ```text
 Description:
@@ -28,18 +26,18 @@ mod-manager
 
 ## Features
 
-Enable:
+Enable or keep enabled:
 
 - Issues
 - Releases
 - Discussions, optional, if you want a lower-friction feedback channel
 
-Issues must be enabled before `.github/ISSUE_TEMPLATE` forms and
-`/issues/new/choose` links work.
+Issues must stay enabled for `.github/ISSUE_TEMPLATE` forms and
+`/issues/new/choose` links to work.
 
 ## Suggested Labels
 
-Create or keep these labels:
+Create or keep these labels with these colors and descriptions:
 
 | Label | Color | Purpose |
 | --- | --- | --- |
@@ -56,7 +54,7 @@ Create or keep these labels:
 
 ## Pinned Feedback Issue
 
-After Issues are enabled, create and pin an issue with this title:
+Keep this issue pinned:
 
 ```text
 MACKAN Preview Feedback
