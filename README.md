@@ -16,8 +16,11 @@ downloads, installs, exports, registry locking, and compatibility decisions.
 ## Quick Links
 
 - [Download preview app](https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview)
+- [Install the preview](INSTALL.md)
 - [Open the website](https://ikoles-dev.github.io/MACKAN/)
 - [Report preview feedback](https://github.com/iKoles-dev/MACKAN/issues/new/choose)
+- [Troubleshooting](docs/mackan/troubleshooting.md)
+- [Diagnostics and privacy](docs/mackan/diagnostics-privacy.md)
 - [Read the release checklist](docs/mackan/release-execution-checklist.md)
 - [Check feature parity](docs/mackan/parity-matrix.md)
 
@@ -38,12 +41,15 @@ ad-hoc signed app. A signed and notarized DMG remains a release gate.
 
 ## Download The Preview
 
-1. Download `MACKAN-preview-macOS.app.zip` from the
-   [MACKAN Preview release](https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview).
-2. Unzip the archive.
-3. Open `MACKAN.app`.
-4. If macOS Gatekeeper blocks a normal double-click, use Finder right-click,
+1. Download `MACKAN-preview-macOS.app.zip` and the matching `.sha256` file from
+   the [MACKAN Preview release](https://github.com/iKoles-dev/MACKAN/releases/tag/mackan-preview).
+2. Verify the checksum.
+3. Unzip the archive.
+4. Open `MACKAN.app`.
+5. If macOS Gatekeeper blocks a normal double-click, use Finder right-click,
    then Open.
+
+See [INSTALL.md](INSTALL.md) for the full install and checksum flow.
 
 ## What You Can Test
 
@@ -138,8 +144,13 @@ Public-facing MACKAN planning and implementation docs:
 - [Architecture](docs/mackan/architecture.md)
 - [Product spec](docs/mackan/product-spec.md)
 - [Parity matrix](docs/mackan/parity-matrix.md)
+- [Install guide](INSTALL.md)
+- [Troubleshooting](docs/mackan/troubleshooting.md)
+- [Diagnostics and privacy](docs/mackan/diagnostics-privacy.md)
 - [Release roadmap](docs/mackan/release-roadmap.md)
 - [Release execution checklist](docs/mackan/release-execution-checklist.md)
+- [Community launch copy](docs/mackan/community-launch-copy.md)
+- [GitHub repository settings](docs/mackan/github-repository-settings.md)
 
 Some older files under `docs/mackan` are implementation evidence or planning
 snapshots. They are useful for audits, but the documents above are the intended

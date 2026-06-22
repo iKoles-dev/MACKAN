@@ -8,6 +8,9 @@ release plan, and parity work.
 
 | Need | Read |
 | --- | --- |
+| Install the preview app | [Install guide](../../INSTALL.md) |
+| Troubleshoot first launch or mod workflows | [Troubleshooting](troubleshooting.md) |
+| Share logs or diagnostics safely | [Diagnostics and privacy](diagnostics-privacy.md) |
 | Product scope and target experience | [Product spec](product-spec.md) |
 | Native app, sidecar, and CKAN Core boundaries | [Architecture](architecture.md) |
 | What is implemented versus Windows CKAN | [Parity matrix](parity-matrix.md) |
@@ -15,6 +18,8 @@ release plan, and parity work.
 | Concrete signing and release gates | [Release execution checklist](release-execution-checklist.md) |
 | Operational release flow | [v1 release runbook](v1-release-execution-runbook.md) |
 | Public-preview hygiene status | [Public readiness report](public-readiness-report.md) |
+| Public launch post drafts | [Community launch copy](community-launch-copy.md) |
+| GitHub About, Issues, labels, and pinned issue setup | [GitHub repository settings](github-repository-settings.md) |
 
 ## Current Preview Shape
 
@@ -44,7 +49,8 @@ Useful feedback includes:
 - Expected result, actual result, and whether retrying changed the outcome.
 
 Use the GitHub issue templates from the repository root when reporting preview
-feedback.
+feedback. Issues must be enabled in repository settings before those templates
+appear on GitHub.
 
 ## For Contributors
 

@@ -136,7 +136,18 @@ jobs:
 
           ## Download
 
-          Download \`${{ steps.build-app.outputs.zip_name }}\`, unzip it, and open \`MACKAN.app\`.
+          Download both assets from this release:
+
+          - \`${{ steps.build-app.outputs.zip_name }}\`
+          - \`${{ steps.build-app.outputs.zip_name }}.sha256\`
+
+          Verify the archive before opening it:
+
+          \`\`\`bash
+          shasum -a 256 -c ${{ steps.build-app.outputs.zip_name }}.sha256
+          \`\`\`
+
+          Then unzip \`${{ steps.build-app.outputs.zip_name }}\` and open \`MACKAN.app\`.
 
           ## Who should use this
 
@@ -154,9 +165,17 @@ jobs:
 
           ## Known release limitation
 
-          This preview is ad-hoc signed but not Developer ID signed or notarized yet.
-          If macOS blocks a normal double-click, use Finder right-click -> Open.
-          A signed and notarized DMG remains a separate public-release gate.
+          - This preview is ad-hoc signed but not Developer ID signed or notarized yet.
+          - If macOS blocks a normal double-click, use Finder right-click -> Open.
+          - A signed and notarized DMG remains a separate public-release gate.
+          - This is a preview build for testing native macOS workflows, not an official CKAN release.
+
+          ## Help and feedback
+
+          - Install guide: https://github.com/iKoles-dev/MACKAN/blob/mackan-native/INSTALL.md
+          - Troubleshooting: https://github.com/iKoles-dev/MACKAN/blob/mackan-native/docs/mackan/troubleshooting.md
+          - Diagnostics and privacy: https://github.com/iKoles-dev/MACKAN/blob/mackan-native/docs/mackan/diagnostics-privacy.md
+          - Feedback: https://github.com/iKoles-dev/MACKAN/issues/new/choose
 
           ## Build
 
