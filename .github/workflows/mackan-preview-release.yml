@@ -244,15 +244,12 @@ jobs:
                 --prerelease
             fi
 
-            mapfile -t old_assets < <(
-              gh release view "$tag_name" --json assets --jq '.assets[].name' \
-                | grep -E '^MACKAN-.*-macOS[.]app[.]zip([.]sha256)?$' \
-                || true
-            )
-            for asset_name in "${old_assets[@]}"; do
-              [[ -n "$asset_name" ]] || continue
-              gh release delete-asset "$tag_name" "$asset_name" --yes || true
-            done
+            gh release view "$tag_name" --json assets --jq '.assets[].name' \
+              | grep -E '^MACKAN-.*-macOS[.]app[.]zip([.]sha256)?$' \
+              | while IFS= read -r asset_name; do
+                  [[ -n "$asset_name" ]] || continue
+                  gh release delete-asset "$tag_name" "$asset_name" --yes || true
+                done || true
 
             gh release upload "$tag_name" \
               "${{ steps.build-app.outputs.zip_path }}" \
